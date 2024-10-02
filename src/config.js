@@ -1,0 +1,1 @@
+export const API_ENDPOINT = 'https://vsisvetgu5.execute-api.us-east-1.amazonaws.com/prod/create-distributor';

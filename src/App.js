@@ -1,25 +1,18 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import OwnerDashboard from './components/OwnerDashboard';
+import DistributorDashboard from './components/DistributorDashboard';
+import DistributorRegistration from './components/DistributorRegistration';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+      <Router>
+        <Switch>
+          <Route path="/" exact component={OwnerDashboard} />
+          <Route path="/distributor" exact component={DistributorDashboard} />
+          <Route path="/register/:token" component={DistributorRegistration} />
+        </Switch>
+      </Router>
   );
 }
 
