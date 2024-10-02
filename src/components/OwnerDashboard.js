@@ -7,7 +7,7 @@ function OwnerDashboard() {
 
     const generateLink = async () => {
         try {
-            const result = await axios.post(`${API_ENDPOINT}/create-distributor`);
+            const result = await axios.post(`${API_ENDPOINT}`);
             setLink(`${window.location.origin}/register/${result.data.token}`);
         } catch (error) {
             console.error('Error generating link:', error);
