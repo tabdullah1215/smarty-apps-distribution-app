@@ -28,3 +28,6 @@ aws-untracked/trust-policy.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+#ide files
+.idea
