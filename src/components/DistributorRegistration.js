@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useParams, useHistory } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
 
 function DistributorRegistration() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const { token } = useParams();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,7 +17,7 @@ function DistributorRegistration() {
                 password,
                 token
             });
-            history.push('/distributor');
+            navigate('/distributor');
         } catch (error) {
             console.error('Error registering distributor:', error);
         }
