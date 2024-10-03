@@ -12,7 +12,7 @@ function DistributorRegistration() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`${API_ENDPOINT}/create-distributor`, {
+            await axios.post(`${API_ENDPOINT}`, {
                 username,
                 password,
                 token
