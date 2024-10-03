@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
-import { ClipboardCopy } from 'lucide-react';
+import { Copy } from 'lucide-react';
 
-function OwnerDashboard() {
+export default function OwnerDashboard() {
     const [link, setLink] = useState('');
     const [copied, setCopied] = useState(false);
 
@@ -40,16 +40,16 @@ function OwnerDashboard() {
             {link && (
                 <div className="mt-8 p-6 bg-gray-100 rounded-lg shadow-md">
                     <p className="text-xl font-semibold mb-4">Distributor Registration Link:</p>
-                    <div className="flex items-center">
+                    <div className="flex items-stretch">
                         <div className="flex-grow p-4 bg-white rounded-l-lg border-2 border-r-0 border-gray-300 overflow-x-auto">
                             <p className="text-lg whitespace-nowrap">{link}</p>
                         </div>
                         <button
                             onClick={copyToClipboard}
-                            className="p-4 bg-gray-200 rounded-r-lg border-2 border-l-0 border-gray-300 hover:bg-gray-300 transition duration-300"
+                            className="px-4 bg-gray-200 rounded-r-lg border-2 border-l-0 border-gray-300 hover:bg-gray-300 transition duration-300 flex items-center"
                             title="Copy to clipboard"
                         >
-                            <ClipboardCopy size={24} />
+                            <Copy size={24} />
                         </button>
                     </div>
                     {copied && (
@@ -60,5 +60,3 @@ function OwnerDashboard() {
         </div>
     );
 }
-
-export default OwnerDashboard;
