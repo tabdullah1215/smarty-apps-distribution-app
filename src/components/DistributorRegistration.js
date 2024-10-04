@@ -16,14 +16,17 @@ function DistributorRegistration() {
         e.preventDefault();
         setError('');
         try {
-            console.log('Submitting registration with token:', token);
-            const response = await axios.post(API_ENDPOINT, {
+            const requestBody = {
                 username,
                 password,
                 token,
                 distributorName,
                 companyName
-            });
+            };
+            console.log('Submitting registration with data:', { ...requestBody, password: '[REDACTED]' });
+
+            const response = await axios.post(API_ENDPOINT, requestBody);
+
             console.log('Registration response:', response);
             if (response.data.message === 'Distributor registered successfully') {
                 navigate('/distributor');
@@ -40,6 +43,8 @@ function DistributorRegistration() {
                 const errorType = error.response.headers['x-error-type'];
                 if (errorType === 'TokenAlreadyUsed') {
                     setError('Your link has been already used. Please request a new registration link from administrator.');
+                } else if (errorType === 'InvalidRequest') {
+                    setError('Invalid request: ' + (error.response.data.message || 'Please check all fields and try again.'));
                 } else if (error.response.data && error.response.data.message) {
                     setError(error.response.data.message);
                 } else {
