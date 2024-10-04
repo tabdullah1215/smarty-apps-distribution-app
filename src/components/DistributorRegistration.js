@@ -41,7 +41,8 @@ function DistributorRegistration() {
 
             // Display the error message sent by the backend (Lambda)
             if (error.response && error.response.data && error.response.data.message) {
-                setError(error.response.data.message);  // Use the backend-provided error message
+                console.log('backend error message exists');
+                setError(() => error.response.data.message);  // Use the backend-provided error message
             } else {
                 // Fallback to a generic error message if the backend didn't provide any message
                 setError('An error occurred during registration. Please try again.');
