@@ -35,7 +35,12 @@ function DistributorRegistration() {
             if (error.response) {
                 console.error('Error response:', error.response);
                 console.error('Error response data:', error.response.data);
-                if (error.response.data && error.response.data.message) {
+                console.error('Error type:', error.response.headers['x-error-type']);
+
+                const errorType = error.response.headers['x-error-type'];
+                if (errorType === 'TokenAlreadyUsed') {
+                    setError('Your link has been already used. Please request a new registration link from administrator.');
+                } else if (error.response.data && error.response.data.message) {
                     setError(error.response.data.message);
                 } else {
                     setError(`Error ${error.response.status}: ${error.response.statusText}`);
