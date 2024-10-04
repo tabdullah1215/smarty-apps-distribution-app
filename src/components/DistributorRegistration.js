@@ -27,11 +27,15 @@ function DistributorRegistration() {
             if (response.data.message === 'Distributor registered successfully') {
                 navigate('/distributor');
             } else {
-                setError('Registration failed. Please try again.');
+                setError(response.data.message || 'Registration failed. Please try again.');
             }
         } catch (error) {
             console.error('Error registering distributor:', error);
-            setError('An error occurred during registration. Please try again.');
+            if (error.response && error.response.data && error.response.data.message) {
+                setError(error.response.data.message);
+            } else {
+                setError('An error occurred during registration. Please try again.');
+            }
         }
     };
 
