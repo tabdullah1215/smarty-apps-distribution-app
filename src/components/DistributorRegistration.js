@@ -16,6 +16,7 @@ function DistributorRegistration() {
         e.preventDefault();
         setError('');
         try {
+            console.log('Submitting registration with token:', token);
             const response = await axios.post(API_ENDPOINT, {
                 username,
                 password,
@@ -31,9 +32,19 @@ function DistributorRegistration() {
             }
         } catch (error) {
             console.error('Error registering distributor:', error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setError(error.response.data.message);
+            if (error.response) {
+                console.error('Error response:', error.response);
+                console.error('Error response data:', error.response.data);
+                if (error.response.data && error.response.data.message) {
+                    setError(error.response.data.message);
+                } else {
+                    setError(`Error ${error.response.status}: ${error.response.statusText}`);
+                }
+            } else if (error.request) {
+                console.error('Error request:', error.request);
+                setError('No response received from the server. Please try again.');
             } else {
+                console.error('Error message:', error.message);
                 setError('An error occurred during registration. Please try again.');
             }
         }
