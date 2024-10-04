@@ -35,6 +35,9 @@ function DistributorRegistration() {
             }
         } catch (error) {
             console.error('Error registering distributor:', error);
+            console.error('error.response', error.response);
+            console.error('error.response.data', error.response.data);
+            console.error('error.response.data.message', error.response.data.message);
 
             // Display the error message sent by the backend (Lambda)
             if (error.response && error.response.data && error.response.data.message) {
@@ -48,7 +51,7 @@ function DistributorRegistration() {
 
     return (
         <div className="p-8 max-w-md mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Distributor Registration</h1>
+            <h1 className="text-3xl font-bold mb-6">Distributor Registration ver 23</h1>
             {error && <p className="text-red-500 mb-4">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
