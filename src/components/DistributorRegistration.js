@@ -4,8 +4,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
 
 function DistributorRegistration() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('testuser');
+    const [password, setPassword] = useState('password123');
+    const [distributorName, setDistributorName] = useState('John Doe');
+    const [companyName, setCompanyName] = useState('Acme Corp');
     const [error, setError] = useState('');
     const { token } = useParams();
     const navigate = useNavigate();
@@ -17,7 +19,9 @@ function DistributorRegistration() {
             const response = await axios.post(API_ENDPOINT, {
                 username,
                 password,
-                token
+                token,
+                distributorName,
+                companyName
             });
             console.log('Registration response:', response);
             if (response.data.message === 'Distributor registered successfully') {
@@ -49,6 +53,22 @@ function DistributorRegistration() {
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                    required
+                />
+                <input
+                    type="text"
+                    placeholder="Distributor Name"
+                    value={distributorName}
+                    onChange={(e) => setDistributorName(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded"
+                    required
+                />
+                <input
+                    type="text"
+                    placeholder="Company Name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded"
                     required
                 />
