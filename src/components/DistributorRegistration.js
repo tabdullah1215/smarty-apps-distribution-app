@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
 
 function DistributorRegistration() {
-    const [username, setUsername] = useState('testuser');
-    const [password, setPassword] = useState('password123');
-    const [distributorName, setDistributorName] = useState('John Doe');
-    const [companyName, setCompanyName] = useState('Acme Corp');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [distributorName, setDistributorName] = useState('');
+    const [companyName, setCompanyName] = useState('');
     const [error, setError] = useState('');
     const { token } = useParams();
     const navigate = useNavigate();
 
+    useEffect(() => {
+        if (!token) {
+            setError('No registration token provided. Please use a valid registration link.');
+        }
+    }, [token]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        if (!token) {
+            setError('No registration token provided. Please use a valid registration link.');
+            return;
+        }
         try {
             const requestBody = {
                 username,
