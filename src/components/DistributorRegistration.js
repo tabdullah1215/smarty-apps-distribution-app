@@ -33,9 +33,13 @@ function DistributorRegistration() {
                 distributorName,
                 companyName
             };
-            console.log('Submitting registration with data:', { ...requestBody, password: '[REDACTED]' });
+            console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
 
-            const response = await axios.post(API_ENDPOINT, requestBody);
+            const response = await axios.post(API_ENDPOINT, requestBody, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
 
             console.log('Registration response:', response);
             if (response.data.message === 'Distributor registered successfully') {
