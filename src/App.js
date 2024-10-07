@@ -10,7 +10,7 @@ function App() {
             <Routes>
                 <Route path="/" element={<OwnerDashboard />} />
                 <Route path="/distributor" element={<DistributorDashboard />} />
-                <Route path="/register/:token" element={<DistributorRegistration />} />
+                <Route path="/register/:linkType/:token" element={<DistributorRegistration />} />
             </Routes>
         </Router>
     );

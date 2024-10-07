@@ -4,12 +4,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
 
 function DistributorRegistration() {
-    const [username, setUsername] = useState('testuser');
-    const [password, setPassword] = useState('password123');
-    const [distributorName, setDistributorName] = useState('John Doe');
-    const [companyName, setCompanyName] = useState('Acme Corp');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [distributorName, setDistributorName] = useState('');
+    const [companyName, setCompanyName] = useState('');
     const [error, setError] = useState('');
-    const { token } = useParams();
+    const { linkType, token } = useParams();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -22,7 +22,8 @@ function DistributorRegistration() {
                 password,
                 token,
                 distributorName,
-                companyName
+                companyName,
+                linkType  // Include the linkType in the request
             });
 
             // Check the backend response for a success message
@@ -30,21 +31,15 @@ function DistributorRegistration() {
                 // Navigate to the next page on successful registration
                 navigate('/distributor');
             } else {
-                // Handle other unexpected cases (this is unlikely since Lambda sends 400 for errors)
+                // Handle other unexpected cases
                 setError('Registration failed. Please try again.');
             }
         } catch (error) {
-            console.error('Error registering distributor:', Boolean(error));
-            console.error('error.response', Boolean(error.response));
-            console.error('error.response.data', Boolean(error.response.data));
-            console.error('error.response.data.message', Boolean(error.response.data.message));
-
             // Display the error message sent by the backend (Lambda)
             if (error.response && error.response.data && error.response.data.message) {
-                console.log('backend error message exists');
-                setError(() => error.response.data.message);  // Use the backend-provided error message
+                setError(error.response.data.message);
             } else {
-                // Fallback to a generic error message if the backend didn't provide any message
+                // Fallback to a generic error message
                 setError('An error occurred during registration. Please try again.');
             }
         }
@@ -52,7 +47,8 @@ function DistributorRegistration() {
 
     return (
         <div className="p-8 max-w-md mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Distributor Registration ver 24</h1>
+            <h1 className="text-3xl font-bold mb-6">Distributor Registration</h1>
+            <p className="mb-4">Registration Type: {linkType}</p>
             {error && <p className="text-red-500 mb-4">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
