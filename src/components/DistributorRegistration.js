@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
@@ -8,10 +8,18 @@ function DistributorRegistration() {
     const [password, setPassword] = useState('TestPassword123!');
     const [distributorName, setDistributorName] = useState('Test Distributor Inc.');
     const [companyName, setCompanyName] = useState('Test Company Ltd.');
-    const [orderNumber, setOrderNumber] = useState('ORDER12345');
+    const [orderNumber, setOrderNumber] = useState('');
     const [error, setError] = useState('');
     const { linkType, token } = useParams();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (linkType === 'generic') {
+            // Generate a random 6-digit order number
+            const randomOrderNumber = Math.floor(100000 + Math.random() * 900000).toString();
+            setOrderNumber(randomOrderNumber);
+        }
+    }, [linkType]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
