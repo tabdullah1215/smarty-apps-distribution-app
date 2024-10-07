@@ -31,3 +31,6 @@ yarn-error.log*
 
 #ide files
 .idea
+/aws-untracked/
+/db-scripts
+/backups

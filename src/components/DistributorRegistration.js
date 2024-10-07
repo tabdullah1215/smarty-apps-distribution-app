@@ -8,6 +8,7 @@ function DistributorRegistration() {
     const [password, setPassword] = useState('TestPassword123!');
     const [distributorName, setDistributorName] = useState('Test Distributor Inc.');
     const [companyName, setCompanyName] = useState('Test Company Ltd.');
+    const [orderNumber, setOrderNumber] = useState('ORDER12345');
     const [error, setError] = useState('');
     const { linkType, token } = useParams();
     const navigate = useNavigate();
@@ -16,15 +17,22 @@ function DistributorRegistration() {
         e.preventDefault();
         setError('');  // Reset error state
         try {
-            // Make the API call to the Lambda function
-            const response = await axios.post(API_ENDPOINT, {
+            const payload = {
                 username,
                 password,
                 token,
                 distributorName,
                 companyName,
                 linkType
-            });
+            };
+
+            // Include orderNumber for generic links
+            if (linkType === 'generic') {
+                payload.orderNumber = orderNumber;
+            }
+
+            // Make the API call to the Lambda function
+            const response = await axios.post(API_ENDPOINT, payload);
 
             // Check the backend response for a success message
             if (response.data.message === 'Distributor registered successfully') {
@@ -95,6 +103,19 @@ function DistributorRegistration() {
                         required
                     />
                 </div>
+                {linkType === 'generic' && (
+                    <div>
+                        <label htmlFor="orderNumber" className="block mb-1 text-sm font-medium">Order Number</label>
+                        <input
+                            id="orderNumber"
+                            type="text"
+                            value={orderNumber}
+                            onChange={(e) => setOrderNumber(e.target.value)}
+                            className="w-full p-2 border rounded"
+                            required
+                        />
+                    </div>
+                )}
                 <button type="submit" className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600">
                     Register
                 </button>
