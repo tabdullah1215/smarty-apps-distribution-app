@@ -8,9 +8,11 @@ export default function OwnerDashboard() {
     const [genericLink, setGenericLink] = useState('');
     const [copiedUnique, setCopiedUnique] = useState(false);
     const [copiedGeneric, setCopiedGeneric] = useState(false);
+    const [error, setError] = useState('');
 
     const generateLink = async (type) => {
         try {
+            setError('');
             const result = await axios.post(API_ENDPOINT, { linkType: type });
             console.log('result:', result);
             if (result.data && result.data.token) {
@@ -21,10 +23,11 @@ export default function OwnerDashboard() {
                     setGenericLink(link);
                 }
             } else {
-                console.error('No token received from API');
+                setError('Failed to generate link. Please try again.');
             }
         } catch (error) {
             console.error('Error generating link:', error);
+            setError('An error occurred while generating the link. Please try again.');
         }
     };
 
@@ -70,6 +73,7 @@ export default function OwnerDashboard() {
     return (
         <div className="p-8 max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
+            {error && <p className="text-red-500 mb-4">{error}</p>}
             <LinkGenerator
                 title="Unique Link"
                 link={uniqueLink}
