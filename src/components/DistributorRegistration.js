@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
-import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
 
 function DistributorRegistration() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [distributorName, setDistributorName] = useState('');
-    const [companyName, setCompanyName] = useState('');
+    const [username, setUsername] = useState('testuser123');
+    const [password, setPassword] = useState('TestPassword123!');
+    const [distributorName, setDistributorName] = useState('Test Distributor Inc.');
+    const [companyName, setCompanyName] = useState('Test Company Ltd.');
     const [error, setError] = useState('');
     const { linkType, token } = useParams();
     const navigate = useNavigate();
@@ -23,7 +21,7 @@ function DistributorRegistration() {
                 token,
                 distributorName,
                 companyName,
-                linkType  // Include the linkType in the request
+                linkType
             });
 
             // Check the backend response for a success message
