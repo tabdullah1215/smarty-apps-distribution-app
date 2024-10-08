@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { Copy } from 'lucide-react';
@@ -9,11 +9,17 @@ export default function OwnerDashboard() {
     const [copiedUnique, setCopiedUnique] = useState(false);
     const [copiedGeneric, setCopiedGeneric] = useState(false);
     const [error, setError] = useState('');
+    const [orderNumber, setOrderNumber] = useState('');
+    const [pendingDistributors, setPendingDistributors] = useState([]);
+
+    useEffect(() => {
+        fetchPendingDistributors();
+    }, []);
 
     const generateLink = async (type) => {
         try {
             setError('');
-            const result = await axios.post(API_ENDPOINT, { linkType: type });
+            const result = await axios.post(`${API_ENDPOINT}/create-distributor`, { linkType: type });
             console.log('result:', result);
             if (result.data && result.data.token) {
                 const link = `${window.location.origin}/register/${type}/${result.data.token}`;
@@ -36,6 +42,28 @@ export default function OwnerDashboard() {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
+    };
+
+    const insertOrderNumber = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_ENDPOINT}/insert-order`, { orderNumber });
+            setOrderNumber('');
+            setError('Order number inserted successfully.');
+        } catch (error) {
+            console.error('Error inserting order number:', error);
+            setError('Failed to insert order number. Please try again.');
+        }
+    };
+
+    const fetchPendingDistributors = async () => {
+        try {
+            const response = await axios.get(`${API_ENDPOINT}/pending-distributors`);
+            setPendingDistributors(response.data);
+        } catch (error) {
+            console.error('Error fetching pending distributors:', error);
+            setError('Failed to fetch pending distributors.');
+        }
     };
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
@@ -74,6 +102,7 @@ export default function OwnerDashboard() {
         <div className="p-8 max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
             {error && <p className="text-red-500 mb-4">{error}</p>}
+
             <LinkGenerator
                 title="Unique Link"
                 link={uniqueLink}
@@ -88,6 +117,47 @@ export default function OwnerDashboard() {
                 generateFn={() => generateLink('generic')}
                 copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
             />
+
+            <div className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Insert Order Number</h2>
+                <form onSubmit={insertOrderNumber} className="flex items-center">
+                    <input
+                        type="text"
+                        value={orderNumber}
+                        onChange={(e) => setOrderNumber(e.target.value)}
+                        placeholder="Enter order number"
+                        className="flex-grow p-2 border rounded-l"
+                        required
+                    />
+                    <button type="submit" className="py-2 px-4 bg-blue-500 text-white rounded-r">
+                        Insert
+                    </button>
+                </form>
+            </div>
+
+            <div className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Pending Distributors</h2>
+                <table className="w-full border-collapse border">
+                    <thead>
+                    <tr className="bg-gray-200">
+                        <th className="border p-2">Name</th>
+                        <th className="border p-2">Order #</th>
+                        <th className="border p-2">Status</th>
+                        <th className="border p-2">Link Type</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {pendingDistributors.map((distributor, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                            <td className="border p-2">{distributor.DistributorName}</td>
+                            <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
+                            <td className="border p-2">{distributor.Status}</td>
+                            <td className="border p-2">{distributor.LinkType}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
