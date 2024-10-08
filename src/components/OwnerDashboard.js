@@ -46,7 +46,7 @@ export default function OwnerDashboard() {
 
     const insertOrderNumber = async (e) => {
         e.preventDefault();
-        const url = `${API_ENDPOINT}/create-distributor`;
+        const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
             const response = await axios.post(url, { orderNumber });
