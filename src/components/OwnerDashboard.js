@@ -46,10 +46,13 @@ export default function OwnerDashboard() {
 
     const insertOrderNumber = async (e) => {
         e.preventDefault();
+        const url = `${API_ENDPOINT}/create-distributor`;
+        console.log('Calling API at:', url);
         try {
-            await axios.post(`${API_ENDPOINT}/insert-order`, { orderNumber });
+            const response = await axios.post(url, { orderNumber });
             setOrderNumber('');
-            setError('Order number inserted successfully.');
+            setError('');
+            console.log('Order number inserted successfully:', response.data);
         } catch (error) {
             console.error('Error inserting order number:', error);
             setError('Failed to insert order number. Please try again.');
