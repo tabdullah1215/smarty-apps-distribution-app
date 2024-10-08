@@ -12,9 +12,9 @@ export default function OwnerDashboard() {
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
 
-    useEffect(() => {
-        fetchPendingDistributors();
-    }, []);
+    // useEffect(() => {
+    //     fetchPendingDistributors();
+    // }, []);
 
     const generateLink = async (type) => {
         try {
