@@ -40,7 +40,7 @@ function DistributorRegistration() {
             }
 
             // Make the API call to the Lambda function
-            const response = await axios.post(API_ENDPOINT, payload);
+            const response = await axios.post(`${API_ENDPOINT}/create-distributor`, payload);
 
             // Check the backend response for a success message
             if (response.data.message === 'Distributor registered successfully') {
