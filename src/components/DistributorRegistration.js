@@ -48,6 +48,7 @@ function DistributorRegistration() {
                 navigate('/distributor');
             } else {
                 // Handle other unexpected cases
+                console.log("response message", response.data.message)
                 setError('Registration failed. Please try again.');
             }
         } catch (error) {
