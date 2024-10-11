@@ -10,7 +10,6 @@ export default function OwnerDashboard() {
     const [copiedGeneric, setCopiedGeneric] = useState(false);
     const [error, setError] = useState('');
     const [orderNumber, setOrderNumber] = useState('');
-    const [resourcePath, setResourcePath] = useState('/create-distributor'); // Default path
     const [pendingDistributors, setPendingDistributors] = useState([]);
 
     // useEffect(() => {
@@ -47,7 +46,7 @@ export default function OwnerDashboard() {
 
     const insertOrderNumber = async (e) => {
         e.preventDefault();
-        const url = `${API_ENDPOINT}${resourcePath}`;
+        const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
             const response = await axios.post(url, { orderNumber });
@@ -124,32 +123,18 @@ export default function OwnerDashboard() {
 
             <div className="mt-8">
                 <h2 className="text-2xl font-semibold mb-4">Insert Order Number</h2>
-                <form onSubmit={insertOrderNumber} className="space-y-4">
-                    <div>
-                        <label htmlFor="resourcePath" className="block mb-1 text-sm font-medium">Resource Path</label>
-                        <input
-                            type="text"
-                            id="resourcePath"
-                            value={resourcePath}
-                            onChange={(e) => setResourcePath(e.target.value)}
-                            placeholder="Enter resource path (e.g., /create-distributor or /insert-order)"
-                            className="w-full p-2 border rounded"
-                            required
-                        />
-                    </div>
-                    <div className="flex items-center">
-                        <input
-                            type="text"
-                            value={orderNumber}
-                            onChange={(e) => setOrderNumber(e.target.value)}
-                            placeholder="Enter order number"
-                            className="flex-grow p-2 border rounded-l"
-                            required
-                        />
-                        <button type="submit" className="py-2 px-4 bg-blue-500 text-white rounded-r">
-                            Insert
-                        </button>
-                    </div>
+                <form onSubmit={insertOrderNumber} className="flex items-center">
+                    <input
+                        type="text"
+                        value={orderNumber}
+                        onChange={(e) => setOrderNumber(e.target.value)}
+                        placeholder="Enter order number"
+                        className="flex-grow p-2 border rounded-l"
+                        required
+                    />
+                    <button type="submit" className="py-2 px-4 bg-blue-500 text-white rounded-r">
+                        Insert
+                    </button>
                 </form>
             </div>
 
