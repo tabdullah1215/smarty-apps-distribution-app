@@ -128,3 +128,5 @@ function DistributorRegistration() {
         </div>
     );
 }
+
+export default DistributorRegistration;
