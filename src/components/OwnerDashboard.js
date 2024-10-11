@@ -15,10 +15,10 @@ export default function OwnerDashboard() {
     const generateLink = async (type) => {
         try {
             setError('');
-            const result = await axios.post(`${API_ENDPOINT}/create-distributor`, {
-                action: 'generateToken',
-                linkType: type
-            });
+            const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                { action: 'generateToken', linkType: type },
+                { headers: { 'Content-Type': 'application/json' } }
+            );
             console.log('result:', result);
             if (result.data && result.data.token) {
                 const link = `${window.location.origin}/register/${type}/${result.data.token}`;
@@ -48,10 +48,10 @@ export default function OwnerDashboard() {
         const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
-            const response = await axios.post(url, {
-                action: 'insertOrder',
-                orderNumber
-            });
+            const response = await axios.post(url,
+                { action: 'insertOrder', orderNumber },
+                { headers: { 'Content-Type': 'application/json' } }
+            );
             setOrderNumber('');
             setError('');
             console.log('Order number inserted successfully:', response.data);

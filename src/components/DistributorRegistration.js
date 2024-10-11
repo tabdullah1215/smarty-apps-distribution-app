@@ -38,7 +38,10 @@ function DistributorRegistration() {
                 payload.orderNumber = orderNumber;
             }
 
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`, payload);
+            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                payload,
+                { headers: { 'Content-Type': 'application/json' } }
+            );
 
             if (response.data.message === 'Distributor registered successfully') {
                 navigate('/distributor');
@@ -125,5 +128,3 @@ function DistributorRegistration() {
         </div>
     );
 }
-
-export default DistributorRegistration;
