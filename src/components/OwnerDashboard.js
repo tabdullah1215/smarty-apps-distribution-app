@@ -12,14 +12,13 @@ export default function OwnerDashboard() {
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
 
-    // useEffect(() => {
-    //     fetchPendingDistributors();
-    // }, []);
-
     const generateLink = async (type) => {
         try {
             setError('');
-            const result = await axios.post(`${API_ENDPOINT}/create-distributor`, { linkType: type });
+            const result = await axios.post(`${API_ENDPOINT}/create-distributor`, {
+                action: 'generateToken',
+                linkType: type
+            });
             console.log('result:', result);
             if (result.data && result.data.token) {
                 const link = `${window.location.origin}/register/${type}/${result.data.token}`;
@@ -49,7 +48,10 @@ export default function OwnerDashboard() {
         const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
-            const response = await axios.post(url, { orderNumber });
+            const response = await axios.post(url, {
+                action: 'insertOrder',
+                orderNumber
+            });
             setOrderNumber('');
             setError('');
             console.log('Order number inserted successfully:', response.data);
@@ -58,16 +60,6 @@ export default function OwnerDashboard() {
             setError('Failed to insert order number. Please try again.');
         }
     };
-
-    // const fetchPendingDistributors = async () => {
-    //     try {
-    //         const response = await axios.get(`${API_ENDPOINT}/pending-distributors`);
-    //         setPendingDistributors(response.data);
-    //     } catch (error) {
-    //         console.error('Error fetching pending distributors:', error);
-    //         setError('Failed to fetch pending distributors.');
-    //     }
-    // };
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">

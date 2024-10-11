@@ -15,7 +15,6 @@ function DistributorRegistration() {
 
     useEffect(() => {
         if (linkType === 'generic') {
-            // Generate a random 6-digit order number
             const randomOrderNumber = Math.floor(100000 + Math.random() * 900000).toString();
             setOrderNumber(randomOrderNumber);
         }
@@ -23,9 +22,10 @@ function DistributorRegistration() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');  // Reset error state
+        setError('');
         try {
             const payload = {
+                action: 'registerDistributor',
                 username,
                 password,
                 token,
@@ -34,29 +34,22 @@ function DistributorRegistration() {
                 linkType
             };
 
-            // Include orderNumber for generic links
             if (linkType === 'generic') {
                 payload.orderNumber = orderNumber;
             }
 
-            // Make the API call to the Lambda function
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`, payload);
 
-            // Check the backend response for a success message
             if (response.data.message === 'Distributor registered successfully') {
-                // Navigate to the next page on successful registration
                 navigate('/distributor');
             } else {
-                // Handle other unexpected cases
-                console.log("response message", response.data.message)
+                console.log("response message", response.data.message);
                 setError('Registration failed. Please try again.');
             }
         } catch (error) {
-            // Display the error message sent by the backend (Lambda)
             if (error.response && error.response.data && error.response.data.message) {
                 setError(error.response.data.message);
             } else {
-                // Fallback to a generic error message
                 setError('An error occurred during registration. Please try again.');
             }
         }
