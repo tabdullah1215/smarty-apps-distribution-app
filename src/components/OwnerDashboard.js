@@ -52,16 +52,26 @@ export default function OwnerDashboard() {
         try {
             setSyncMessage(''); // Clear any existing sync message
             setInsertOrderMessage(''); // Clear any existing insert order message
+            setError(''); // Clear any existing errors
+
             const response = await axios.post(url,
                 { action: 'insertOrder', orderNumber },
                 { headers: { 'Content-Type': 'application/json' } }
             );
-            setOrderNumber('');
-            setError('');
-            console.log('Order number inserted successfully:', response.data);
+
+            console.log('Order insertion response:', response.data);
+
+            if (response.data && response.data.message) {
+                // Highlight start
+                setInsertOrderMessage(`${response.data.message} - Order number: ${orderNumber}`);
+                // Highlight end
+                setOrderNumber(''); // Clear the input field
+            } else {
+                setError('Unexpected response from server. Please try again.');
+            }
         } catch (error) {
             console.error('Error inserting order number:', error);
-            setError('Failed to insert order number. Please try again.');
+            setError(error.response?.data?.message || 'Failed to insert order number. Please try again.');
         }
     };
 
