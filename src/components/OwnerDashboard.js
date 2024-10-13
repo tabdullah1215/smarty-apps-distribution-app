@@ -11,6 +11,7 @@ export default function OwnerDashboard() {
     const [error, setError] = useState('');
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
+    const [syncMessage, setSyncMessage] = useState('');
 
     const generateLink = async (type) => {
         try {
@@ -61,6 +62,37 @@ export default function OwnerDashboard() {
         }
     };
 
+    const syncOrdersAndDistributors = async () => {
+        try {
+            setSyncMessage('');
+            setError('');
+            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                { action: 'syncOrdersAndDistributors' },
+                { headers: { 'Content-Type': 'application/json' } }
+            );
+            setSyncMessage(response.data.message);
+            // Refresh the pending distributors list after sync
+            fetchPendingDistributors();
+        } catch (error) {
+            console.error('Error syncing orders and distributors:', error);
+            setError('Failed to sync orders and distributors. Please try again.');
+        }
+    };
+
+    const fetchPendingDistributors = async () => {
+        try {
+            const response = await axios.get(`${API_ENDPOINT}/pending-distributors`);
+            setPendingDistributors(response.data);
+        } catch (error) {
+            console.error('Error fetching pending distributors:', error);
+            setError('Failed to fetch pending distributors. Please try again.');
+        }
+    };
+
+    useEffect(() => {
+        fetchPendingDistributors();
+    }, []);
+
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">
             <h2 className="text-2xl font-semibold mb-4">{title}</h2>
@@ -97,6 +129,7 @@ export default function OwnerDashboard() {
         <div className="p-8 max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
             {error && <p className="text-red-500 mb-4">{error}</p>}
+            {syncMessage && <p className="text-green-500 mb-4">{syncMessage}</p>}
 
             <LinkGenerator
                 title="Unique Link"
@@ -128,6 +161,16 @@ export default function OwnerDashboard() {
                         Insert
                     </button>
                 </form>
+            </div>
+
+            <div className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Sync Orders and Distributors</h2>
+                <button
+                    onClick={syncOrdersAndDistributors}
+                    className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
+                >
+                    Sync Now
+                </button>
             </div>
 
             <div className="mt-8">
