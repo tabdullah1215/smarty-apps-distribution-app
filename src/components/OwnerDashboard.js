@@ -12,6 +12,7 @@ export default function OwnerDashboard() {
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
     const [syncMessage, setSyncMessage] = useState('');
+    const [insertOrderMessage, setInsertOrderMessage] = useState('');
 
     const generateLink = async (type) => {
         try {
@@ -49,6 +50,8 @@ export default function OwnerDashboard() {
         const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
+            setSyncMessage(''); // Clear any existing sync message
+            setInsertOrderMessage(''); // Clear any existing insert order message
             const response = await axios.post(url,
                 { action: 'insertOrder', orderNumber },
                 { headers: { 'Content-Type': 'application/json' } }
@@ -130,6 +133,7 @@ export default function OwnerDashboard() {
             <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
             {error && <p className="text-red-500 mb-4">{error}</p>}
             {syncMessage && <p className="text-green-500 mb-4">{syncMessage}</p>}
+            {insertOrderMessage && <p className="text-blue-500 mb-4">{insertOrderMessage}</p>}
 
             <LinkGenerator
                 title="Unique Link"
