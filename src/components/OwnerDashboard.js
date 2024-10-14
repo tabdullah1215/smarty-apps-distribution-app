@@ -13,6 +13,7 @@ export default function OwnerDashboard() {
     const [pendingDistributors, setPendingDistributors] = useState([]);
     const [syncMessage, setSyncMessage] = useState('');
     const [insertOrderMessage, setInsertOrderMessage] = useState('');
+    const [incomingOrders, setIncomingOrders] = useState([]);
 
     const generateLink = async (type) => {
         try {
@@ -70,6 +71,7 @@ export default function OwnerDashboard() {
             if (response.data && response.data.message) {
                 setInsertOrderMessage(`${response.data.message} - Order number: ${orderNumber}`);
                 setOrderNumber('');
+                fetchIncomingOrders(); // Refresh the incoming orders list
             } else {
                 setError('Unexpected response from server. Please try again.');
             }
@@ -92,6 +94,7 @@ export default function OwnerDashboard() {
             );
             setSyncMessage(response.data.message);
             fetchPendingDistributors();
+            fetchIncomingOrders(); // Refresh both lists after sync
         } catch (error) {
             console.error('Error syncing orders and distributors:', error);
             setError('Failed to sync orders and distributors. Please try again.');
@@ -110,8 +113,21 @@ export default function OwnerDashboard() {
         }
     };
 
+    const fetchIncomingOrders = async () => {
+        try {
+            const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
+                params: { action: 'getIncomingOrders' }
+            });
+            setIncomingOrders(response.data);
+        } catch (error) {
+            console.error('Error fetching incoming orders:', error);
+            setError('Failed to fetch incoming orders. Please try again.');
+        }
+    };
+
     useEffect(() => {
         fetchPendingDistributors();
+        fetchIncomingOrders();
     }, []);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
@@ -213,6 +229,28 @@ export default function OwnerDashboard() {
                             <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
                             <td className="border p-2">{distributor.Status}</td>
                             <td className="border p-2">{distributor.LinkType}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Incoming Orders</h2>
+                <table className="w-full border-collapse border">
+                    <thead>
+                    <tr className="bg-gray-200">
+                        <th className="border p-2">Order Number</th>
+                        <th className="border p-2">Created At</th>
+                        <th className="border p-2">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {incomingOrders.map((order, index) => (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                            <td className="border p-2">{order.OrderNumber}</td>
+                            <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
+                            <td className="border p-2">{order.Status}</td>
                         </tr>
                     ))}
                     </tbody>
