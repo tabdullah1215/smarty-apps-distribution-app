@@ -25,7 +25,6 @@ function DistributorRegistration() {
         setError('');
         try {
             const payload = {
-                action: 'registerDistributor',
                 username,
                 password,
                 token,
@@ -40,7 +39,10 @@ function DistributorRegistration() {
 
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
                 payload,
-                { headers: { 'Content-Type': 'application/json' } }
+                {
+                    params: { action: 'registerDistributor' },
+                    headers: { 'Content-Type': 'application/json' }
+                }
             );
 
             if (response.data.message === 'Distributor registered successfully') {
