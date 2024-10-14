@@ -18,8 +18,11 @@ export default function OwnerDashboard() {
         try {
             setError('');
             const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                { action: 'generateToken', linkType: type },
-                { headers: { 'Content-Type': 'application/json' } }
+                { linkType: type },
+                {
+                    params: { action: 'generateToken' },
+                    headers: { 'Content-Type': 'application/json' }
+                }
             );
             console.log('result:', result);
             if (result.data && result.data.token) {
@@ -50,22 +53,23 @@ export default function OwnerDashboard() {
         const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
-            setSyncMessage(''); // Clear any existing sync message
-            setInsertOrderMessage(''); // Clear any existing insert order message
-            setError(''); // Clear any existing errors
+            setSyncMessage('');
+            setInsertOrderMessage('');
+            setError('');
 
             const response = await axios.post(url,
-                { action: 'insertOrder', orderNumber },
-                { headers: { 'Content-Type': 'application/json' } }
+                { orderNumber },
+                {
+                    params: { action: 'insertOrder' },
+                    headers: { 'Content-Type': 'application/json' }
+                }
             );
 
             console.log('Order insertion response:', response.data);
 
             if (response.data && response.data.message) {
-                // Highlight start
                 setInsertOrderMessage(`${response.data.message} - Order number: ${orderNumber}`);
-                // Highlight end
-                setOrderNumber(''); // Clear the input field
+                setOrderNumber('');
             } else {
                 setError('Unexpected response from server. Please try again.');
             }
@@ -80,11 +84,13 @@ export default function OwnerDashboard() {
             setSyncMessage('');
             setError('');
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                { action: 'syncOrdersAndDistributors' },
-                { headers: { 'Content-Type': 'application/json' } }
+                {},
+                {
+                    params: { action: 'syncOrdersAndDistributors' },
+                    headers: { 'Content-Type': 'application/json' }
+                }
             );
             setSyncMessage(response.data.message);
-            // Refresh the pending distributors list after sync
             fetchPendingDistributors();
         } catch (error) {
             console.error('Error syncing orders and distributors:', error);
@@ -94,7 +100,9 @@ export default function OwnerDashboard() {
 
     const fetchPendingDistributors = async () => {
         try {
-            const response = await axios.get(`${API_ENDPOINT}/get-distributors`);
+            const response = await axios.get(`${API_ENDPOINT}/get-distributors`, {
+                params: { action: 'getDistributors' }
+            });
             setPendingDistributors(response.data);
         } catch (error) {
             console.error('Error fetching pending distributors:', error);
