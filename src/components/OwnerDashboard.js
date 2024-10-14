@@ -94,7 +94,7 @@ export default function OwnerDashboard() {
 
     const fetchPendingDistributors = async () => {
         try {
-            const response = await axios.get(`${API_ENDPOINT}/pending-distributors`);
+            const response = await axios.get(`${API_ENDPOINT}/get-distributors`);
             setPendingDistributors(response.data);
         } catch (error) {
             console.error('Error fetching pending distributors:', error);
