@@ -25,6 +25,7 @@ function DistributorRegistration() {
         setError('');
         try {
             const payload = {
+                action: 'registerDistributor',
                 username,
                 password,
                 token,
@@ -39,19 +40,24 @@ function DistributorRegistration() {
 
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
                 payload,
-                {
-                    params: { action: 'registerDistributor' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
+                { headers: { 'Content-Type': 'application/json' } }
             );
 
             if (response.data.message === 'Distributor registered successfully') {
+                console.log('Distributor registration successful:', {
+                    username,
+                    distributorName,
+                    companyName,
+                    linkType,
+                    orderNumber: linkType === 'generic' ? orderNumber : 'N/A'
+                });
                 navigate('/distributor');
             } else {
-                console.log("response message", response.data.message);
+                console.log("Unexpected response message:", response.data.message);
                 setError('Registration failed. Please try again.');
             }
         } catch (error) {
+            console.log('Distributor registration failed:', error.response?.data?.message || error.message);
             if (error.response && error.response.data && error.response.data.message) {
                 setError(error.response.data.message);
             } else {
