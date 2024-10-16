@@ -14,6 +14,10 @@ export default function OwnerDashboard() {
     const [syncMessage, setSyncMessage] = useState('');
     const [insertOrderMessage, setInsertOrderMessage] = useState('');
     const [incomingOrders, setIncomingOrders] = useState([]);
+    const [nameFilter, setNameFilter] = useState('');
+    const [orderFilter, setOrderFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [linkTypeFilter, setLinkTypeFilter] = useState('');
 
     const generateLink = async (type) => {
         try {
@@ -104,7 +108,13 @@ export default function OwnerDashboard() {
     const fetchPendingDistributors = async () => {
         try {
             const response = await axios.get(`${API_ENDPOINT}/get-distributors`, {
-                params: { action: 'getDistributors' }
+                params: {
+                    action: 'getDistributors',
+                    nameFilter,
+                    orderFilter,
+                    statusFilter,
+                    linkTypeFilter
+                }
             });
             setPendingDistributors(response.data);
         } catch (error) {
@@ -112,6 +122,11 @@ export default function OwnerDashboard() {
             setError('Failed to fetch pending distributors. Please try again.');
         }
     };
+
+    useEffect(() => {
+        fetchPendingDistributors();
+        fetchIncomingOrders();
+    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
 
     const fetchIncomingOrders = async () => {
         try {
@@ -124,11 +139,6 @@ export default function OwnerDashboard() {
             setError('Failed to fetch incoming orders. Please try again.');
         }
     };
-
-    useEffect(() => {
-        fetchPendingDistributors();
-        fetchIncomingOrders();
-    }, []);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">
@@ -213,15 +223,42 @@ export default function OwnerDashboard() {
 
             <div className="mt-8">
                 <h2 className="text-2xl font-semibold mb-4">Pending Distributors</h2>
+                <div className="mb-4 grid grid-cols-4 gap-4">
+                    <input
+                        type="text"
+                        placeholder="Filter by Name"
+                        value={nameFilter}
+                        onChange={(e) => setNameFilter(e.target.value)}
+                        className="p-2 border rounded"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Filter by Order #"
+                        value={orderFilter}
+                        onChange={(e) => setOrderFilter(e.target.value)}
+                        className="p-2 border rounded"
+                    />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="p-2 border rounded"
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="active">Active</option>
+                    </select>
+                    <select
+                        value={linkTypeFilter}
+                        onChange={(e) => setLinkTypeFilter(e.target.value)}
+                        className="p-2 border rounded"
+                    >
+                        <option value="">All Link Types</option>
+                        <option value="unique">Unique</option>
+                        <option value="generic">Generic</option>
+                    </select>
+                </div>
                 <table className="w-full border-collapse border">
-                    <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border p-2">Name</th>
-                        <th className="border p-2">Order #</th>
-                        <th className="border p-2">Status</th>
-                        <th className="border p-2">Link Type</th>
-                    </tr>
-                    </thead>
+                    {/* ... (existing table header) */}
                     <tbody>
                     {pendingDistributors.map((distributor, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
