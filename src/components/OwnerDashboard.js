@@ -16,7 +16,7 @@ export default function OwnerDashboard() {
     const [incomingOrders, setIncomingOrders] = useState([]);
     const [nameFilter, setNameFilter] = useState('');
     const [orderFilter, setOrderFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('pending');
     const [linkTypeFilter, setLinkTypeFilter] = useState('');
 
     const generateLink = async (type) => {
@@ -222,7 +222,7 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Pending Distributors</h2>
+                <h2 className="text-2xl font-semibold mb-4">Distributors</h2>
                 <div className="mb-4 grid grid-cols-4 gap-4">
                     <input
                         type="text"
