@@ -213,15 +213,15 @@ export default function OwnerDashboard() {
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
-                    <div className="flex flex-col">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center">
-                                <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32"/>
-                                <h1 className="text-2xl font-bold ml-4">Owner Dashboard</h1>
-                            </div>
+                    <div className="flex flex-col items-center">
+                        <div className="w-full flex items-center justify-between mb-2">
+                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32"/>
+                            <h1 className="text-2xl font-bold">Owner Dashboard</h1>
+                            <div className="h-16 w-16"></div>
+                            {/* Spacer for centering */}
                         </div>
                         {/* Permanent message container */}
-                        <div className="w-full">
+                        <div className="w-full max-w-2xl">
                             {permanentMessage.content && (
                                 <div className={`p-2 rounded-lg w-full text-center text-sm ${
                                     permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'

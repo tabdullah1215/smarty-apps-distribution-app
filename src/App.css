@@ -36,3 +36,24 @@
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 768px) {
+  .fixed > div > div {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .fixed img {
+    height: 3rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .fixed h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .main-content {
+    padding-top: 9rem;
+  }
+}
