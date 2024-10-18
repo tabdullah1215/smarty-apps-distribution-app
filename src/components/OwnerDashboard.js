@@ -209,13 +209,13 @@ export default function OwnerDashboard() {
     );
 
     return (
-        <div className="relative font-sans">
+        <div className="relative font-roboto">
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-4xl mx-auto p-4 flex items-center justify-between">
                     <div className="flex items-center">
-                        <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-10 mr-4" />
-                        <h1 className="text-2xl font-bold">Owner Dashboard</h1>
+                        <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-16 mr-6"/>
+                        <h1 className="text-3xl font-bold">Owner Dashboard</h1>
                     </div>
                     {/* Permanent message container */}
                     <div className="flex-grow max-w-lg ml-4">
@@ -231,7 +231,7 @@ export default function OwnerDashboard() {
             </div>
 
             {/* Main content with top padding to account for fixed header */}
-            <div className="p-8 max-w-4xl mx-auto" style={{ paddingTop: "5rem" }}>
+            <div className="p-8 max-w-4xl mx-auto" style={{paddingTop: "5rem"}}>
                 <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
