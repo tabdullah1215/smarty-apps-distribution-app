@@ -213,15 +213,16 @@ export default function OwnerDashboard() {
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
-                    <div className="flex flex-col items-center">
-                        <div className="w-full flex items-center justify-between mb-2">
-                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32"/>
-                            <h1 className="text-2xl font-bold">Owner Dashboard</h1>
-                            <div className="h-16 w-16"></div>
-                            {/* Spacer for centering */}
+                    <div className="flex flex-col items-start md:items-center">
+                        <div
+                            className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
+                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo"
+                                 className="h-16 mb-2 md:mb-0"/>
+                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner
+                                Dashboard</h1>
                         </div>
                         {/* Permanent message container */}
-                        <div className="w-full max-w-2xl">
+                        <div className="w-full max-w-2xl mt-2">
                             {permanentMessage.content && (
                                 <div className={`p-2 rounded-lg w-full text-center text-sm ${
                                     permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
@@ -235,7 +236,7 @@ export default function OwnerDashboard() {
             </div>
 
             {/* Main content with top padding to account for fixed header */}
-            <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "8rem"}}>
+            <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "10rem"}}>
                 <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
