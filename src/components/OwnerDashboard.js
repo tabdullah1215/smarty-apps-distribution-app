@@ -221,15 +221,16 @@ export default function OwnerDashboard() {
                             <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner
                                 Dashboard</h1>
                         </div>
-                        {/* Permanent message container */}
+                        {/* Permanent message container with placeholder */}
                         <div className="w-full max-w-2xl mt-2">
-                            {permanentMessage.content && (
-                                <div className={`p-2 rounded-lg w-full text-center text-sm ${
-                                    permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                            <div
+                                className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
+                                    permanentMessage.content
+                                        ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
+                                        : 'bg-gray-50 text-gray-400'
                                 }`}>
-                                    {permanentMessage.content}
-                                </div>
-                            )}
+                                {permanentMessage.content || 'No messages'}
+                            </div>
                         </div>
                     </div>
                 </div>
