@@ -278,6 +278,7 @@ async function handleRegisterDistributor(body) {
     }
 }
 
+
 async function handleSyncOrdersAndDistributors() {
     try {
         const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
@@ -294,7 +295,7 @@ async function handleSyncOrdersAndDistributors() {
             ExpressionAttributeValues: { ':pendingStatus': 'pending' }
         }));
 
-        const updates = [];
+        const transactItems = [];
 
         for (const order of pendingOrdersResult.Items) {
             const matchingDistributor = pendingDistributorsResult.Items.find(
@@ -302,37 +303,43 @@ async function handleSyncOrdersAndDistributors() {
             );
 
             if (matchingDistributor) {
-                updates.push(
-                    ddbDocClient.send(new UpdateCommand({
+                transactItems.push({
+                    Update: {
                         TableName: 'IncomingOrders',
                         Key: { OrderNumber: order.OrderNumber },
                         UpdateExpression: 'SET #status = :usedStatus',
                         ExpressionAttributeNames: { '#status': 'Status' },
                         ExpressionAttributeValues: { ':usedStatus': 'used' }
-                    }))
-                );
+                    }
+                });
 
-                updates.push(
-                    ddbDocClient.send(new UpdateCommand({
+                transactItems.push({
+                    Update: {
                         TableName: 'Distributors',
                         Key: { DistributorId: matchingDistributor.DistributorId },
                         UpdateExpression: 'SET #status = :activeStatus',
                         ExpressionAttributeNames: { '#status': 'Status' },
                         ExpressionAttributeValues: { ':activeStatus': 'active' }
-                    }))
-                );
+                    }
+                });
+
+                if (transactItems.length === 25) {  // DynamoDB limit of 25 items per transaction
+                    await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+                    transactItems.length = 0;  // Clear the array
+                }
             }
         }
 
-        await Promise.all(updates);
+        if (transactItems.length > 0) {
+            await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+        }
 
-        return createResponse(200, { message: `Sync completed. Updated ${updates.length / 2} pairs.` });
+        return createResponse(200, { message: `Sync completed. Updated ${transactItems.length / 2} pairs.` });
     } catch (error) {
         console.error('Error syncing orders and distributors:', error);
         return createResponse(500, { message: 'Error syncing orders and distributors', error: error.message });
     }
 }
-
 async function handleFetchIncomingOrders() {
     try {
         console.log('Fetching incoming orders');
