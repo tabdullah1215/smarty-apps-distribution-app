@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, BatchWriteCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
 
 const ddbClient = new DynamoDBClient({});
@@ -41,6 +41,8 @@ exports.handler = async (event) => {
                 return await handleFetchIncomingOrders();
             case 'getDistributors':
                 return await handleFetchPendingDistributors(event);
+            case 'bulkInsertOrders':
+                return await handleBulkInsertOrders(body);
             default:
                 return createResponse(400, { message: 'Invalid action' });
         }
@@ -54,29 +56,19 @@ exports.handler = async (event) => {
 };
 
 function sanitizeOrderNumber(orderNumber) {
-    // Convert to string if it's not already
     orderNumber = String(orderNumber);
-
-    // Trim whitespace
     orderNumber = orderNumber.trim();
-
-    // Check if the order number is '0'
     if (orderNumber === '0') {
         throw new Error('Order number cannot be zero');
     }
-
-    // Check length
-    const MAX_LENGTH = 50; // Adjust as needed
+    const MAX_LENGTH = 50;
     if (orderNumber.length > MAX_LENGTH) {
         throw new Error(`Order number exceeds maximum length of ${MAX_LENGTH} characters`);
     }
-
-    // Check pattern (allow digits, letters, hyphens, underscores, and periods)
     const validPattern = /^[a-zA-Z0-9-_.]+$/;
     if (!validPattern.test(orderNumber)) {
         throw new Error('Order number contains invalid characters. Only alphanumeric characters, hyphens, underscores, and periods are allowed.');
     }
-
     return orderNumber;
 }
 
@@ -94,7 +86,6 @@ async function handleInsertOrder(body) {
             return createResponse(400, { message: sanitizationError.message });
         }
 
-        // Check if the order number already exists using scan
         const scanResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'IncomingOrders',
             FilterExpression: 'OrderNumber = :orderNumber',
@@ -114,7 +105,7 @@ async function handleInsertOrder(body) {
             Item: {
                 OrderNumber: sanitizedOrderNumber,
                 CreatedAt: new Date().toISOString(),
-                Status: 'pending' // Add default status
+                Status: 'pending'
             }
         }));
 
@@ -129,8 +120,6 @@ async function handleInsertOrder(body) {
         return createResponse(500, { message: 'Error inserting order', error: error.message });
     }
 }
-
-
 
 async function handleGenerateToken(body) {
     console.log('Generating new token');
@@ -197,7 +186,6 @@ async function handleRegisterDistributor(body) {
                 return createResponse(400, { message: sanitizationError.message });
             }
 
-            // Check for matching order number in IncomingOrders table
             const orderResult = await ddbDocClient.send(new GetCommand({
                 TableName: 'IncomingOrders',
                 Key: { OrderNumber: sanitizedOrderNumber }
@@ -208,7 +196,6 @@ async function handleRegisterDistributor(body) {
                 orderMatchFound = true;
                 distributorStatus = 'active';
             } else {
-                // Check if order number already exists in Distributors table
                 const scanResult = await ddbDocClient.send(new ScanCommand({
                     TableName: 'Distributors',
                     FilterExpression: 'OrderNumber = :orderNumber',
@@ -226,7 +213,7 @@ async function handleRegisterDistributor(body) {
         const distributorItem = {
             DistributorId: distributorId,
             Username: body.username,
-            Password: body.password,  // Note: In production, hash this password
+            Password: body.password,
             Token: body.token,
             DistributorName: body.distributorName,
             CompanyName: body.companyName,
@@ -289,12 +276,8 @@ async function handleRegisterDistributor(body) {
     }
 }
 
-
-
-
 async function handleSyncOrdersAndDistributors() {
     try {
-        // Fetch all pending or null status orders
         const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'IncomingOrders',
             FilterExpression: 'attribute_not_exists(#status) OR #status = :pendingStatus',
@@ -302,7 +285,6 @@ async function handleSyncOrdersAndDistributors() {
             ExpressionAttributeValues: { ':pendingStatus': 'pending' }
         }));
 
-        // Fetch all pending distributors
         const pendingDistributorsResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'Distributors',
             FilterExpression: '#status = :pendingStatus',
@@ -412,6 +394,57 @@ async function handleFetchPendingDistributors(event) {
     } catch (error) {
         console.error('Error fetching distributors:', error);
         return createResponse(500, { message: 'Error fetching distributors', error: error.message });
+    }
+}
+
+async function handleBulkInsertOrders(body) {
+    console.log('Processing bulk insert orders request');
+    try {
+        if (!body.orders || !Array.isArray(body.orders) || body.orders.length === 0) {
+            return createResponse(400, { message: 'Invalid or empty orders array' });
+        }
+
+        const batchSize = 25; // DynamoDB allows up to 25 items per batch write
+        const batches = [];
+
+        for (let i = 0; i < body.orders.length; i += batchSize) {
+            const batch = body.orders.slice(i, i + batchSize);
+            const putRequests = batch.map(order => {
+                try {
+                    const sanitizedOrderNumber = sanitizeOrderNumber(order.orderNumber);
+                    return {
+                        PutRequest: {
+                            Item: {
+                                OrderNumber: sanitizedOrderNumber,
+                                CreatedAt: order.createdAt,
+                                Status: 'pending' // Default status
+                            }
+                        }
+                    };
+                } catch (sanitizationError) {
+                    console.error('Error sanitizing order number:', sanitizationError);
+                    return null;
+                }
+            }).filter(request => request !== null);
+
+            if (putRequests.length > 0) {
+                batches.push(
+                    ddbDocClient.send(new BatchWriteCommand({
+                        RequestItems: {
+                            'IncomingOrders': putRequests
+                        }
+                    }))
+                );
+            }
+        }
+
+        await Promise.all(batches);
+
+        console.log(`Successfully inserted ${body.orders.length} orders`);
+        return createResponse(200, { message: `Successfully inserted ${body.orders.length} orders` });
+    } catch (error) {
+        console.error('Error bulk inserting orders:', error);
+        return createResponse(500, { message: 'Error bulk inserting orders', error: error.message });
     }
 }
 
