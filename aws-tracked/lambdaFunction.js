@@ -1,7 +1,7 @@
 //LAMBDA POST-UPLOAD CSV FEATURE
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, BatchWriteCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
 
 const ddbClient = new DynamoDBClient({});
@@ -406,28 +406,43 @@ async function handleBulkInsertOrders(body) {
             return createResponse(400, { message: 'Invalid or empty orders array' });
         }
 
+        // Step 1: Sanitize and deduplicate order numbers
+        const sanitizedOrders = body.orders.map(order => {
+            try {
+                return {
+                    ...order,
+                    orderNumber: sanitizeOrderNumber(order.orderNumber)
+                };
+            } catch (sanitizationError) {
+                console.error('Error sanitizing order number:', sanitizationError);
+                return null;
+            }
+        }).filter(order => order !== null);
+
+        const uniqueOrders = Array.from(new Set(sanitizedOrders.map(o => o.orderNumber)))
+            .map(orderNumber => sanitizedOrders.find(o => o.orderNumber === orderNumber));
+
+        // Step 2: Check for existing order numbers
+        const existingOrders = await checkExistingOrders(uniqueOrders.map(o => o.orderNumber));
+
+        // Step 3: Filter out existing orders
+        const newOrders = uniqueOrders.filter(order => !existingOrders.includes(order.orderNumber));
+
+        // Step 4: Insert new orders in batches
         const batchSize = 25; // DynamoDB allows up to 25 items per batch write
         const batches = [];
 
-        for (let i = 0; i < body.orders.length; i += batchSize) {
-            const batch = body.orders.slice(i, i + batchSize);
-            const putRequests = batch.map(order => {
-                try {
-                    const sanitizedOrderNumber = sanitizeOrderNumber(order.orderNumber);
-                    return {
-                        PutRequest: {
-                            Item: {
-                                OrderNumber: sanitizedOrderNumber,
-                                CreatedAt: order.createdAt,
-                                Status: 'pending' // Default status
-                            }
-                        }
-                    };
-                } catch (sanitizationError) {
-                    console.error('Error sanitizing order number:', sanitizationError);
-                    return null;
+        for (let i = 0; i < newOrders.length; i += batchSize) {
+            const batch = newOrders.slice(i, i + batchSize);
+            const putRequests = batch.map(order => ({
+                PutRequest: {
+                    Item: {
+                        OrderNumber: order.orderNumber,
+                        CreatedAt: order.createdAt,
+                        Status: 'pending' // Default status
+                    }
                 }
-            }).filter(request => request !== null);
+            }));
 
             if (putRequests.length > 0) {
                 batches.push(
@@ -442,14 +457,39 @@ async function handleBulkInsertOrders(body) {
 
         await Promise.all(batches);
 
-        console.log(`Successfully inserted ${body.orders.length} orders`);
-        return createResponse(200, { message: `Successfully inserted ${body.orders.length} orders` });
+        console.log(`Successfully inserted ${newOrders.length} new orders. ${existingOrders.length} duplicates were skipped.`);
+        return createResponse(200, {
+            message: `Successfully inserted ${newOrders.length} new orders. ${existingOrders.length} duplicates were skipped.`,
+            insertedCount: newOrders.length,
+            skippedCount: existingOrders.length
+        });
     } catch (error) {
         console.error('Error bulk inserting orders:', error);
         return createResponse(500, { message: 'Error bulk inserting orders', error: error.message });
     }
 }
 
+async function checkExistingOrders(orderNumbers) {
+    const existingOrders = [];
+    const batchSize = 100; // DynamoDB allows up to 100 items per batch get
+
+    for (let i = 0; i < orderNumbers.length; i += batchSize) {
+        const batch = orderNumbers.slice(i, i + batchSize);
+        const keys = batch.map(orderNumber => ({ OrderNumber: orderNumber }));
+
+        const result = await ddbDocClient.send(new BatchGetCommand({
+            RequestItems: {
+                'IncomingOrders': {
+                    Keys: keys
+                }
+            }
+        }));
+
+        existingOrders.push(...result.Responses.IncomingOrders.map(item => item.OrderNumber));
+    }
+
+    return existingOrders;
+}
 function createResponse(statusCode, body) {
     return {
         statusCode,
