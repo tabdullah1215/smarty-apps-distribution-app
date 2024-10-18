@@ -1,8 +1,9 @@
+//PRE-UPLOAD CSV
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { Copy } from 'lucide-react';
-import Papa from 'papaparse'; // Make sure to install this package: npm install papaparse
 
 export default function OwnerDashboard() {
     const [uniqueLink, setUniqueLink] = useState('');
@@ -19,8 +20,6 @@ export default function OwnerDashboard() {
     const [orderFilter, setOrderFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
     const [linkTypeFilter, setLinkTypeFilter] = useState('');
-    const [csvFile, setCsvFile] = useState(null);
-    const [uploadMessage, setUploadMessage] = useState('');
 
     const generateLink = async (type) => {
         try {
@@ -126,6 +125,11 @@ export default function OwnerDashboard() {
         }
     };
 
+    useEffect(() => {
+        fetchPendingDistributors();
+        fetchIncomingOrders();
+    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
+
     const fetchIncomingOrders = async () => {
         try {
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
@@ -137,48 +141,6 @@ export default function OwnerDashboard() {
             setError('Failed to fetch incoming orders. Please try again.');
         }
     };
-
-    const handleCSVUpload = (event) => {
-        const file = event.target.files[0];
-        setCsvFile(file);
-    };
-
-    const processAndUploadCSV = async () => {
-        if (!csvFile) {
-            setUploadMessage('Please select a CSV file first.');
-            return;
-        }
-
-        Papa.parse(csvFile, {
-            complete: async (result) => {
-                const orders = result.data.map(row => ({
-                    orderNumber: row[0],
-                    createdAt: row[1]
-                })).filter(order => order.orderNumber && order.createdAt);
-
-                try {
-                    const response = await axios.post(`${API_ENDPOINT}/bulk-insert-orders`,
-                        { orders },
-                        {
-                            params: { action: 'bulkInsertOrders' },
-                            headers: { 'Content-Type': 'application/json' }
-                        }
-                    );
-                    setUploadMessage(response.data.message);
-                    fetchIncomingOrders(); // Refresh the incoming orders list
-                } catch (error) {
-                    console.error('Error uploading orders:', error);
-                    setUploadMessage('Failed to upload orders. Please try again.');
-                }
-            },
-            header: false
-        });
-    };
-
-    useEffect(() => {
-        fetchPendingDistributors();
-        fetchIncomingOrders();
-    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">
@@ -252,23 +214,6 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
-                <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVUpload}
-                    className="mb-4"
-                />
-                <button
-                    onClick={processAndUploadCSV}
-                    className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
-                >
-                    Upload CSV
-                </button>
-                {uploadMessage && <p className="mt-2 text-blue-500">{uploadMessage}</p>}
-            </div>
-
-            <div className="mt-8">
                 <h2 className="text-2xl font-semibold mb-4">Sync Orders and Distributors</h2>
                 <button
                     onClick={syncOrdersAndDistributors}
@@ -315,14 +260,7 @@ export default function OwnerDashboard() {
                     </select>
                 </div>
                 <table className="w-full border-collapse border">
-                    <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border p-2">Name</th>
-                        <th className="border p-2">Order #</th>
-                        <th className="border p-2">Status</th>
-                        <th className="border p-2">Link Type</th>
-                    </tr>
-                    </thead>
+                    {/* ... (existing table header) */}
                     <tbody>
                     {pendingDistributors.map((distributor, index) => (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
