@@ -178,7 +178,7 @@ export default function OwnerDashboard() {
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4">{title}</h2>
+            <h2 className="text-xl font-semibold mb-4">{title}</h2>
             <button
                 onClick={generateFn}
                 className="w-full py-4 px-6 text-xl font-semibold bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600 transition duration-300"
@@ -187,10 +187,10 @@ export default function OwnerDashboard() {
             </button>
             {link && (
                 <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
-                    <p className="text-xl font-semibold mb-4">Distributor Registration Link:</p>
+                    <p className="text-lg font-semibold mb-4">Distributor Registration Link:</p>
                     <div className="flex items-stretch">
                         <div className="flex-grow p-4 bg-white rounded-l-lg border-2 border-r-0 border-gray-300 overflow-x-auto">
-                            <p className="text-lg whitespace-nowrap">{link}</p>
+                            <p className="text-base whitespace-nowrap">{link}</p>
                         </div>
                         <button
                             onClick={copyFn}
@@ -209,16 +209,18 @@ export default function OwnerDashboard() {
     );
 
     return (
-        <div className="relative">
+        <div className="relative font-sans">
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
-                <div className="max-w-4xl mx-auto p-8">
-                    <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
-
+                <div className="max-w-4xl mx-auto p-4 flex items-center justify-between">
+                    <div className="flex items-center">
+                        <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-10 mr-4" />
+                        <h1 className="text-2xl font-bold">Owner Dashboard</h1>
+                    </div>
                     {/* Permanent message container */}
-                    <div className="mb-8 h-16 flex items-center justify-center">
+                    <div className="flex-grow max-w-lg ml-4">
                         {permanentMessage.content && (
-                            <div className={`p-4 rounded-lg w-full text-center ${
+                            <div className={`p-2 rounded-lg w-full text-center text-sm ${
                                 permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                             }`}>
                                 {permanentMessage.content}
@@ -229,7 +231,7 @@ export default function OwnerDashboard() {
             </div>
 
             {/* Main content with top padding to account for fixed header */}
-            <div className="p-8 max-w-4xl mx-auto" style={{ paddingTop: "calc(12rem + 64px)" }}>
+            <div className="p-8 max-w-4xl mx-auto" style={{ paddingTop: "5rem" }}>
                 <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
@@ -246,7 +248,7 @@ export default function OwnerDashboard() {
                 />
 
                 <div className="mt-8">
-                    <h2 className="text-2xl font-semibold mb-4">Insert Order Number</h2>
+                    <h2 className="text-xl font-semibold mb-4">Insert Order Number</h2>
                     <form onSubmit={insertOrderNumber} className="flex items-center">
                         <input
                             type="text"
@@ -263,7 +265,7 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="mt-8">
-                    <h2 className="text-2xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
+                    <h2 className="text-xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
                     <input
                         type="file"
                         accept=".csv"
@@ -279,7 +281,7 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="mt-8">
-                    <h2 className="text-2xl font-semibold mb-4">Sync Orders and Distributors</h2>
+                    <h2 className="text-xl font-semibold mb-4">Sync Orders and Distributors</h2>
                     <button
                         onClick={syncOrdersAndDistributors}
                         className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
@@ -289,7 +291,7 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="mt-8">
-                    <h2 className="text-2xl font-semibold mb-4">Distributors</h2>
+                    <h2 className="text-xl font-semibold mb-4">Distributors</h2>
                     <div className="mb-4 grid grid-cols-4 gap-4">
                         <input
                             type="text"
@@ -347,7 +349,7 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="mt-8">
-                    <h2 className="text-2xl font-semibold mb-4">Incoming Orders</h2>
+                    <h2 className="text-xl font-semibold mb-4">Incoming Orders</h2>
                     <table className="w-full border-collapse border">
                         <thead>
                         <tr className="bg-gray-200">
