@@ -1,32 +1,27 @@
-//OWNERDASHBOARD POST-UPLOAD CSV FEATURE
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { Copy } from 'lucide-react';
-import Papa from 'papaparse'; // Make sure to install this package: npm install papaparse
+import Papa from 'papaparse';
 
 export default function OwnerDashboard() {
     const [uniqueLink, setUniqueLink] = useState('');
     const [genericLink, setGenericLink] = useState('');
     const [copiedUnique, setCopiedUnique] = useState(false);
     const [copiedGeneric, setCopiedGeneric] = useState(false);
-    const [error, setError] = useState('');
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
-    const [syncMessage, setSyncMessage] = useState('');
-    const [insertOrderMessage, setInsertOrderMessage] = useState('');
     const [incomingOrders, setIncomingOrders] = useState([]);
     const [nameFilter, setNameFilter] = useState('');
     const [orderFilter, setOrderFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
     const [linkTypeFilter, setLinkTypeFilter] = useState('');
     const [csvFile, setCsvFile] = useState(null);
-    const [uploadMessage, setUploadMessage] = useState('');
+    const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
 
     const generateLink = async (type) => {
         try {
-            setError('');
+            setPermanentMessage({ type: '', content: '' });
             const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
                 { linkType: type },
                 {
@@ -42,12 +37,13 @@ export default function OwnerDashboard() {
                 } else {
                     setGenericLink(link);
                 }
+                setPermanentMessage({ type: 'success', content: `${type.charAt(0).toUpperCase() + type.slice(1)} link generated successfully.` });
             } else {
-                setError('Failed to generate link. Please try again.');
+                setPermanentMessage({ type: 'error', content: 'Failed to generate link. Please try again.' });
             }
         } catch (error) {
             console.error('Error generating link:', error);
-            setError('An error occurred while generating the link. Please try again.');
+            setPermanentMessage({ type: 'error', content: 'An error occurred while generating the link. Please try again.' });
         }
     };
 
@@ -55,6 +51,7 @@ export default function OwnerDashboard() {
         navigator.clipboard.writeText(link).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+            setPermanentMessage({ type: 'success', content: 'Link copied to clipboard.' });
         });
     };
 
@@ -63,9 +60,7 @@ export default function OwnerDashboard() {
         const url = `${API_ENDPOINT}/insert-order`;
         console.log('Calling API at:', url);
         try {
-            setSyncMessage('');
-            setInsertOrderMessage('');
-            setError('');
+            setPermanentMessage({ type: '', content: '' });
 
             const response = await axios.post(url,
                 { orderNumber },
@@ -78,22 +73,21 @@ export default function OwnerDashboard() {
             console.log('Order insertion response:', response.data);
 
             if (response.data && response.data.message) {
-                setInsertOrderMessage(`${response.data.message} - Order number: ${orderNumber}`);
+                setPermanentMessage({ type: 'success', content: `${response.data.message} - Order number: ${orderNumber}` });
                 setOrderNumber('');
-                fetchIncomingOrders(); // Refresh the incoming orders list
+                fetchIncomingOrders();
             } else {
-                setError('Unexpected response from server. Please try again.');
+                setPermanentMessage({ type: 'error', content: 'Unexpected response from server. Please try again.' });
             }
         } catch (error) {
             console.error('Error inserting order number:', error);
-            setError(error.response?.data?.message || 'Failed to insert order number. Please try again.');
+            setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to insert order number. Please try again.' });
         }
     };
 
     const syncOrdersAndDistributors = async () => {
         try {
-            setSyncMessage('');
-            setError('');
+            setPermanentMessage({ type: '', content: '' });
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
                 {},
                 {
@@ -101,12 +95,12 @@ export default function OwnerDashboard() {
                     headers: { 'Content-Type': 'application/json' }
                 }
             );
-            setSyncMessage(response.data.message);
+            setPermanentMessage({ type: 'success', content: response.data.message });
             fetchPendingDistributors();
-            fetchIncomingOrders(); // Refresh both lists after sync
+            fetchIncomingOrders();
         } catch (error) {
             console.error('Error syncing orders and distributors:', error);
-            setError('Failed to sync orders and distributors. Please try again.');
+            setPermanentMessage({ type: 'error', content: 'Failed to sync orders and distributors. Please try again.' });
         }
     };
 
@@ -124,7 +118,7 @@ export default function OwnerDashboard() {
             setPendingDistributors(response.data);
         } catch (error) {
             console.error('Error fetching pending distributors:', error);
-            setError('Failed to fetch pending distributors. Please try again.');
+            setPermanentMessage({ type: 'error', content: 'Failed to fetch pending distributors. Please try again.' });
         }
     };
 
@@ -136,7 +130,7 @@ export default function OwnerDashboard() {
             setIncomingOrders(response.data);
         } catch (error) {
             console.error('Error fetching incoming orders:', error);
-            setError('Failed to fetch incoming orders. Please try again.');
+            setPermanentMessage({ type: 'error', content: 'Failed to fetch incoming orders. Please try again.' });
         }
     };
 
@@ -147,7 +141,7 @@ export default function OwnerDashboard() {
 
     const processAndUploadCSV = async () => {
         if (!csvFile) {
-            setUploadMessage('Please select a CSV file first.');
+            setPermanentMessage({ type: 'error', content: 'Please select a CSV file first.' });
             return;
         }
 
@@ -166,11 +160,11 @@ export default function OwnerDashboard() {
                             headers: { 'Content-Type': 'application/json' }
                         }
                     );
-                    setUploadMessage(response.data.message);
-                    fetchIncomingOrders(); // Refresh the incoming orders list
+                    setPermanentMessage({ type: 'success', content: response.data.message });
+                    fetchIncomingOrders();
                 } catch (error) {
                     console.error('Error uploading orders:', error);
-                    setUploadMessage('Failed to upload orders. Please try again.');
+                    setPermanentMessage({ type: 'error', content: 'Failed to upload orders. Please try again.' });
                 }
             },
             header: false
@@ -217,9 +211,17 @@ export default function OwnerDashboard() {
     return (
         <div className="p-8 max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
-            {error && <p className="text-red-500 mb-4">{error}</p>}
-            {syncMessage && <p className="text-green-500 mb-4">{syncMessage}</p>}
-            {insertOrderMessage && <p className="text-blue-500 mb-4">{insertOrderMessage}</p>}
+
+            {/* Permanent message container */}
+            <div className="mb-8 h-16 flex items-center justify-center">
+                {permanentMessage.content && (
+                    <div className={`p-4 rounded-lg w-full text-center ${
+                        permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                    }`}>
+                        {permanentMessage.content}
+                    </div>
+                )}
+            </div>
 
             <LinkGenerator
                 title="Unique Link"
@@ -267,7 +269,6 @@ export default function OwnerDashboard() {
                 >
                     Upload CSV
                 </button>
-                {uploadMessage && <p className="mt-2 text-blue-500">{uploadMessage}</p>}
             </div>
 
             <div className="mt-8">

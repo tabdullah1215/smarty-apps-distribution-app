@@ -1,3 +1,5 @@
+//LAMBDA POST-UPLOAD CSV FEATURE
+
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, BatchWriteCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
