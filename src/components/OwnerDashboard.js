@@ -212,23 +212,22 @@ export default function OwnerDashboard() {
         <div className="relative font-roboto">
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
-                <div className="max-w-4xl mx-auto p-4 flex items-center justify-between">
-                    <div className="flex items-center">
-                        <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32 mr-6"/>
-                        <h1 className="text-3xl font-bold">Owner Dashboard</h1>
-                    </div>
-                    {/* Permanent message container */}
-                    <div className="flex-grow max-w-lg ml-4">
-                        {permanentMessage.content && (
-                            <div className={`p-2 rounded-lg w-full text-center text-sm ${
-                                permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                            }`}>
-                                {permanentMessage.content}
-                            </div>
-                        )}
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                        This text is in Roboto font.
+                <div className="max-w-4xl mx-auto p-4">
+                    <div className="flex flex-col">
+                        <div className="flex items-center mb-4">
+                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32"/>
+                            <h1 className="text-3xl font-bold ml-4">Owner Dashboard</h1>
+                        </div>
+                        {/* Permanent message container */}
+                        <div className="w-full">
+                            {permanentMessage.content && (
+                                <div className={`p-2 rounded-lg w-full text-center text-sm ${
+                                    permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                                }`}>
+                                    {permanentMessage.content}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
