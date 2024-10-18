@@ -214,7 +214,7 @@ export default function OwnerDashboard() {
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-4xl mx-auto p-4 flex items-center justify-between">
                     <div className="flex items-center">
-                        <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-16 mr-6"/>
+                        <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32 mr-6"/>
                         <h1 className="text-3xl font-bold">Owner Dashboard</h1>
                     </div>
                     {/* Permanent message container */}
@@ -226,6 +226,9 @@ export default function OwnerDashboard() {
                                 {permanentMessage.content}
                             </div>
                         )}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                        This text is in Roboto font.
                     </div>
                 </div>
             </div>
