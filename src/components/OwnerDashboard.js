@@ -209,156 +209,164 @@ export default function OwnerDashboard() {
     );
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
+        <div className="relative">
+            {/* Fixed header and message panel */}
+            <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
+                <div className="max-w-4xl mx-auto p-8">
+                    <h1 className="text-4xl font-bold mb-8 text-center">Owner Dashboard</h1>
 
-            {/* Permanent message container */}
-            <div className="mb-8 h-16 flex items-center justify-center">
-                {permanentMessage.content && (
-                    <div className={`p-4 rounded-lg w-full text-center ${
-                        permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                    }`}>
-                        {permanentMessage.content}
+                    {/* Permanent message container */}
+                    <div className="mb-8 h-16 flex items-center justify-center">
+                        {permanentMessage.content && (
+                            <div className={`p-4 rounded-lg w-full text-center ${
+                                permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                            }`}>
+                                {permanentMessage.content}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-
-            <LinkGenerator
-                title="Unique Link"
-                link={uniqueLink}
-                copied={copiedUnique}
-                generateFn={() => generateLink('unique')}
-                copyFn={() => copyToClipboard(uniqueLink, setCopiedUnique)}
-            />
-            <LinkGenerator
-                title="Generic Link"
-                link={genericLink}
-                copied={copiedGeneric}
-                generateFn={() => generateLink('generic')}
-                copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
-            />
-
-            <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Insert Order Number</h2>
-                <form onSubmit={insertOrderNumber} className="flex items-center">
-                    <input
-                        type="text"
-                        value={orderNumber}
-                        onChange={(e) => setOrderNumber(e.target.value)}
-                        placeholder="Enter order number"
-                        className="flex-grow p-2 border rounded-l"
-                        required
-                    />
-                    <button type="submit" className="py-2 px-4 bg-blue-500 text-white rounded-r">
-                        Insert
-                    </button>
-                </form>
-            </div>
-
-            <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
-                <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVUpload}
-                    className="mb-4"
-                />
-                <button
-                    onClick={processAndUploadCSV}
-                    className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
-                >
-                    Upload CSV
-                </button>
-            </div>
-
-            <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Sync Orders and Distributors</h2>
-                <button
-                    onClick={syncOrdersAndDistributors}
-                    className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
-                >
-                    Sync Now
-                </button>
-            </div>
-
-            <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Distributors</h2>
-                <div className="mb-4 grid grid-cols-4 gap-4">
-                    <input
-                        type="text"
-                        placeholder="Filter by Name"
-                        value={nameFilter}
-                        onChange={(e) => setNameFilter(e.target.value)}
-                        className="p-2 border rounded"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Filter by Order #"
-                        value={orderFilter}
-                        onChange={(e) => setOrderFilter(e.target.value)}
-                        className="p-2 border rounded"
-                    />
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="p-2 border rounded"
-                    >
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="active">Active</option>
-                    </select>
-                    <select
-                        value={linkTypeFilter}
-                        onChange={(e) => setLinkTypeFilter(e.target.value)}
-                        className="p-2 border rounded"
-                    >
-                        <option value="">All Link Types</option>
-                        <option value="unique">Unique</option>
-                        <option value="generic">Generic</option>
-                    </select>
                 </div>
-                <table className="w-full border-collapse border">
-                    <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border p-2">Name</th>
-                        <th className="border p-2">Order #</th>
-                        <th className="border p-2">Status</th>
-                        <th className="border p-2">Link Type</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {pendingDistributors.map((distributor, index) => (
-                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                            <td className="border p-2">{distributor.DistributorName}</td>
-                            <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
-                            <td className="border p-2">{distributor.Status}</td>
-                            <td className="border p-2">{distributor.LinkType}</td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
             </div>
 
-            <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-4">Incoming Orders</h2>
-                <table className="w-full border-collapse border">
-                    <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border p-2">Order Number</th>
-                        <th className="border p-2">Created At</th>
-                        <th className="border p-2">Status</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {incomingOrders.map((order, index) => (
-                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                            <td className="border p-2">{order.OrderNumber}</td>
-                            <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
-                            <td className="border p-2">{order.Status}</td>
+            {/* Main content with top padding to account for fixed header */}
+            <div className="p-8 max-w-4xl mx-auto" style={{ paddingTop: "calc(12rem + 64px)" }}>
+                <LinkGenerator
+                    title="Unique Link"
+                    link={uniqueLink}
+                    copied={copiedUnique}
+                    generateFn={() => generateLink('unique')}
+                    copyFn={() => copyToClipboard(uniqueLink, setCopiedUnique)}
+                />
+                <LinkGenerator
+                    title="Generic Link"
+                    link={genericLink}
+                    copied={copiedGeneric}
+                    generateFn={() => generateLink('generic')}
+                    copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
+                />
+
+                <div className="mt-8">
+                    <h2 className="text-2xl font-semibold mb-4">Insert Order Number</h2>
+                    <form onSubmit={insertOrderNumber} className="flex items-center">
+                        <input
+                            type="text"
+                            value={orderNumber}
+                            onChange={(e) => setOrderNumber(e.target.value)}
+                            placeholder="Enter order number"
+                            className="flex-grow p-2 border rounded-l"
+                            required
+                        />
+                        <button type="submit" className="py-2 px-4 bg-blue-500 text-white rounded-r">
+                            Insert
+                        </button>
+                    </form>
+                </div>
+
+                <div className="mt-8">
+                    <h2 className="text-2xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
+                    <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVUpload}
+                        className="mb-4"
+                    />
+                    <button
+                        onClick={processAndUploadCSV}
+                        className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
+                    >
+                        Upload CSV
+                    </button>
+                </div>
+
+                <div className="mt-8">
+                    <h2 className="text-2xl font-semibold mb-4">Sync Orders and Distributors</h2>
+                    <button
+                        onClick={syncOrdersAndDistributors}
+                        className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
+                    >
+                        Sync Now
+                    </button>
+                </div>
+
+                <div className="mt-8">
+                    <h2 className="text-2xl font-semibold mb-4">Distributors</h2>
+                    <div className="mb-4 grid grid-cols-4 gap-4">
+                        <input
+                            type="text"
+                            placeholder="Filter by Name"
+                            value={nameFilter}
+                            onChange={(e) => setNameFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Filter by Order #"
+                            value={orderFilter}
+                            onChange={(e) => setOrderFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                        </select>
+                        <select
+                            value={linkTypeFilter}
+                            onChange={(e) => setLinkTypeFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        >
+                            <option value="">All Link Types</option>
+                            <option value="unique">Unique</option>
+                            <option value="generic">Generic</option>
+                        </select>
+                    </div>
+                    <table className="w-full border-collapse border">
+                        <thead>
+                        <tr className="bg-gray-200">
+                            <th className="border p-2">Name</th>
+                            <th className="border p-2">Order #</th>
+                            <th className="border p-2">Status</th>
+                            <th className="border p-2">Link Type</th>
                         </tr>
-                    ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                        {pendingDistributors.map((distributor, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                                <td className="border p-2">{distributor.DistributorName}</td>
+                                <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
+                                <td className="border p-2">{distributor.Status}</td>
+                                <td className="border p-2">{distributor.LinkType}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="mt-8">
+                    <h2 className="text-2xl font-semibold mb-4">Incoming Orders</h2>
+                    <table className="w-full border-collapse border">
+                        <thead>
+                        <tr className="bg-gray-200">
+                            <th className="border p-2">Order Number</th>
+                            <th className="border p-2">Created At</th>
+                            <th className="border p-2">Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {incomingOrders.map((order, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                                <td className="border p-2">{order.OrderNumber}</td>
+                                <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
+                                <td className="border p-2">{order.Status}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
