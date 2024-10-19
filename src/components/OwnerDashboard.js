@@ -18,6 +18,9 @@ export default function OwnerDashboard() {
     const [linkTypeFilter, setLinkTypeFilter] = useState('');
     const [csvFile, setCsvFile] = useState(null);
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
+    const [incomingOrderFilter, setIncomingOrderFilter] = useState('');
+    const [incomingDateFilter, setIncomingDateFilter] = useState('');
+    const [incomingStatusFilter, setIncomingStatusFilter] = useState('pending');
 
     const generateLink = async (type) => {
         try {
@@ -125,7 +128,12 @@ export default function OwnerDashboard() {
     const fetchIncomingOrders = async () => {
         try {
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
-                params: { action: 'getIncomingOrders' }
+                params: {
+                    action: 'getIncomingOrders',
+                    orderFilter: incomingOrderFilter,
+                    dateFilter: incomingDateFilter,
+                    statusFilter: incomingStatusFilter
+                }
             });
             setIncomingOrders(response.data);
         } catch (error) {
@@ -133,6 +141,10 @@ export default function OwnerDashboard() {
             setPermanentMessage({ type: 'error', content: 'Failed to fetch incoming orders. Please try again.' });
         }
     };
+
+    useEffect(() => {
+        fetchIncomingOrders();
+    }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
     const handleCSVUpload = (event) => {
         const file = event.target.files[0];
@@ -353,9 +365,38 @@ export default function OwnerDashboard() {
                         </tbody>
                     </table>
                 </div>
-
                 <div className="mt-8">
                     <h2 className="text-xl font-semibold mb-4">Incoming Orders</h2>
+                    <div className="mb-4 grid grid-cols-4 gap-4">
+                        <input
+                            type="text"
+                            placeholder="Filter by Order #"
+                            value={incomingOrderFilter}
+                            onChange={(e) => setIncomingOrderFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <input
+                            type="date"
+                            value={incomingDateFilter}
+                            onChange={(e) => setIncomingDateFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <select
+                            value={incomingStatusFilter}
+                            onChange={(e) => setIncomingStatusFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        >
+                            <option value="pending">Pending</option>
+                            <option value="used">Used</option>
+                            <option value="">All Statuses</option>
+                        </select>
+                        <button
+                            onClick={fetchIncomingOrders}
+                            className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition duration-300"
+                        >
+                            Refresh
+                        </button>
+                    </div>
                     <table className="w-full border-collapse border">
                         <thead>
                         <tr className="bg-gray-200">
@@ -368,13 +409,15 @@ export default function OwnerDashboard() {
                         {incomingOrders.map((order, index) => (
                             <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
                                 <td className="border p-2">{order.OrderNumber}</td>
-                                <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
+                                <td className="border p-2">{new Date(order.CreatedAt).toLocaleDateString()}</td>
                                 <td className="border p-2">{order.Status}</td>
                             </tr>
                         ))}
                         </tbody>
                     </table>
                 </div>
+
+
             </div>
         </div>
     );
