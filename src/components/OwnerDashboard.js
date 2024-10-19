@@ -127,14 +127,20 @@ export default function OwnerDashboard() {
 
     const fetchIncomingOrders = async () => {
         try {
-            const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
-                params: {
-                    action: 'getIncomingOrders',
-                    orderFilter: incomingOrderFilter,
-                    dateFilter: incomingDateFilter,
-                    statusFilter: incomingStatusFilter
-                }
-            });
+            const params = {
+                action: 'getIncomingOrders',
+                statusFilter: incomingStatusFilter
+            };
+
+            if (incomingOrderFilter) {
+                params.orderFilter = incomingOrderFilter;
+            }
+
+            if (incomingDateFilter) {
+                params.dateFilter = incomingDateFilter;
+            }
+
+            const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, { params });
             setIncomingOrders(response.data);
         } catch (error) {
             console.error('Error fetching incoming orders:', error);
