@@ -1,3 +1,4 @@
+
 //LAMBDA POST-UPLOAD CSV FEATURE
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -40,7 +41,7 @@ exports.handler = async (event) => {
             case 'syncOrdersAndDistributors':
                 return await handleSyncOrdersAndDistributors();
             case 'getIncomingOrders':
-                return await handleFetchIncomingOrders();
+                return await handleFetchIncomingOrders(event);
             case 'getDistributors':
                 return await handleFetchPendingDistributors(event);
             case 'bulkInsertOrders':
@@ -340,15 +341,39 @@ async function handleSyncOrdersAndDistributors() {
         return createResponse(500, { message: 'Error syncing orders and distributors', error: error.message });
     }
 }
-async function handleFetchIncomingOrders() {
+async function handleFetchIncomingOrders(event) {
     try {
         console.log('Fetching incoming orders');
-        const scanResult = await ddbDocClient.send(new ScanCommand({
+        const { orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
+
+        let filterExpression = [];
+        let expressionAttributeNames = {};
+        let expressionAttributeValues = {};
+
+        if (orderFilter) {
+            filterExpression.push('contains(OrderNumber, :orderFilter)');
+            expressionAttributeValues[':orderFilter'] = orderFilter;
+        }
+
+        if (dateFilter) {
+            filterExpression.push('begins_with(CreatedAt, :dateFilter)');
+            expressionAttributeValues[':dateFilter'] = dateFilter;
+        }
+
+        if (statusFilter) {
+            filterExpression.push('#status = :statusFilter');
+            expressionAttributeNames['#status'] = 'Status';
+            expressionAttributeValues[':statusFilter'] = statusFilter;
+        }
+
+        const scanParams = {
             TableName: 'IncomingOrders',
-            FilterExpression: '#status = :statusValue',
-            ExpressionAttributeNames: { '#status': 'Status' },
-            ExpressionAttributeValues: { ':statusValue': 'pending' }
-        }));
+            FilterExpression: filterExpression.length > 0 ? filterExpression.join(' AND ') : undefined,
+            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
+            ExpressionAttributeValues: Object.keys(expressionAttributeValues).length > 0 ? expressionAttributeValues : undefined
+        };
+
+        const scanResult = await ddbDocClient.send(new ScanCommand(scanParams));
 
         console.log('Incoming orders fetched:', scanResult.Items.length);
         return createResponse(200, scanResult.Items);
@@ -357,7 +382,6 @@ async function handleFetchIncomingOrders() {
         return createResponse(500, { message: 'Error fetching incoming orders', error: error.message });
     }
 }
-
 async function handleFetchPendingDistributors(event) {
     try {
         console.log('Fetching distributors');
