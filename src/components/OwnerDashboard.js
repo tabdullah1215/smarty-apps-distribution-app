@@ -127,17 +127,17 @@ export default function OwnerDashboard() {
 
     const fetchIncomingOrders = async () => {
         try {
-            const params = {
+            const params = new URLSearchParams({
                 action: 'getIncomingOrders',
-                statusFilter: incomingStatusFilter
-            };
+                statusFilter: incomingStatusFilter || 'pending'
+            });
 
             if (incomingOrderFilter) {
-                params.orderFilter = incomingOrderFilter;
+                params.append('orderFilter', incomingOrderFilter);
             }
 
             if (incomingDateFilter) {
-                params.dateFilter = incomingDateFilter;
+                params.append('dateFilter', incomingDateFilter);
             }
 
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, { params });
