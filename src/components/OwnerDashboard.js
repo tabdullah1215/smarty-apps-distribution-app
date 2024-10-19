@@ -128,8 +128,7 @@ export default function OwnerDashboard() {
     const fetchIncomingOrders = async () => {
         try {
             const params = new URLSearchParams({
-                action: 'getIncomingOrders',
-                statusFilter: incomingStatusFilter || 'pending'
+                action: 'getIncomingOrders'
             });
 
             if (incomingOrderFilter) {
@@ -138,6 +137,11 @@ export default function OwnerDashboard() {
 
             if (incomingDateFilter) {
                 params.append('dateFilter', incomingDateFilter);
+            }
+
+            // Only append statusFilter if it's not an empty string
+            if (incomingStatusFilter !== '') {
+                params.append('statusFilter', incomingStatusFilter);
             }
 
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, { params });
