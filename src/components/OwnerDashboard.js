@@ -18,6 +18,9 @@ export default function OwnerDashboard() {
     const [linkTypeFilter, setLinkTypeFilter] = useState('');
     const [csvFile, setCsvFile] = useState(null);
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
+    const [incomingOrderFilter, setIncomingOrderFilter] = useState('');
+    const [incomingDateFilter, setIncomingDateFilter] = useState('');
+    const [incomingStatusFilter, setIncomingStatusFilter] = useState('');
 
     const generateLink = async (type) => {
         try {
@@ -125,7 +128,12 @@ export default function OwnerDashboard() {
     const fetchIncomingOrders = async () => {
         try {
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
-                params: { action: 'getIncomingOrders' }
+                params: {
+                    action: 'getIncomingOrders',
+                    orderFilter: incomingOrderFilter,
+                    dateFilter: incomingDateFilter,
+                    statusFilter: incomingStatusFilter
+                }
             });
             setIncomingOrders(response.data);
         } catch (error) {
@@ -175,6 +183,10 @@ export default function OwnerDashboard() {
         fetchPendingDistributors();
         fetchIncomingOrders();
     }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
+
+    useEffect(() => {
+        fetchIncomingOrders();
+    }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">
@@ -356,6 +368,30 @@ export default function OwnerDashboard() {
 
                 <div className="mt-8">
                     <h2 className="text-xl font-semibold mb-4">Incoming Orders</h2>
+                    <div className="mb-4 grid grid-cols-3 gap-4">
+                        <input
+                            type="text"
+                            placeholder="Filter by Order #"
+                            value={incomingOrderFilter}
+                            onChange={(e) => setIncomingOrderFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <input
+                            type="date"
+                            value={incomingDateFilter}
+                            onChange={(e) => setIncomingDateFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <select
+                            value={incomingStatusFilter}
+                            onChange={(e) => setIncomingStatusFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="used">Used</option>
+                        </select>
+                    </div>
                     <table className="w-full border-collapse border">
                         <thead>
                         <tr className="bg-gray-200">
