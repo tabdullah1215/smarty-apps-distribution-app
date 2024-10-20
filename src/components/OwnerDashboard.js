@@ -244,7 +244,13 @@ export default function OwnerDashboard() {
     };
 
     return (
-        <div className="relative font-roboto bg-gray-100">
+        <div className="relative font-roboto bg-gray-100"
+             style={{
+                 backgroundImage: 'url("/images/smartyapps-logo.png")',
+                 backgroundRepeat: 'repeat',
+                 backgroundSize: '200px 200px', // Adjust this size as needed
+                 backgroundPosition: 'center',
+             }}>
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
