@@ -196,9 +196,9 @@ export default function OwnerDashboard() {
             >
                 Generate {title}
             </button>
-            {link && (
-                <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
-                    <p className="text-lg font-semibold mb-4">Distributor Registration Link:</p>
+            <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
+                <p className="text-lg font-semibold mb-4">Distributor Registration Link:</p>
+                {link ? (
                     <div className="flex items-stretch">
                         <div className="flex-grow p-4 bg-white rounded-l-lg border-2 border-r-0 border-gray-300 overflow-x-auto">
                             <p className="text-base whitespace-nowrap">{link}</p>
@@ -211,11 +211,15 @@ export default function OwnerDashboard() {
                             <Copy size={24} />
                         </button>
                     </div>
-                    {copied && (
-                        <p className="mt-2 text-green-600 font-semibold">Copied to clipboard!</p>
-                    )}
-                </div>
-            )}
+                ) : (
+                    <div className="p-4 bg-white rounded-lg border-2 border-gray-300">
+                        <p className="text-base text-gray-500 italic">No link generated yet. Click the button above to generate a new link.</p>
+                    </div>
+                )}
+                {copied && (
+                    <p className="mt-2 text-green-600 font-semibold">Copied to clipboard!</p>
+                )}
+            </div>
         </div>
     );
 
@@ -249,17 +253,21 @@ export default function OwnerDashboard() {
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
                     <div className="flex flex-col items-start md:items-center">
-                        <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
-                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32 mb-2 md:mb-0"/>
-                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner Dashboard</h1>
+                        <div
+                            className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
+                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo"
+                                 className="h-32 mb-2 md:mb-0"/>
+                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner
+                                Dashboard</h1>
                         </div>
                         {/* Permanent message container with placeholder */}
                         <div className="w-full max-w-2xl mt-2">
-                            <div className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
-                                permanentMessage.content
-                                    ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
-                                    : 'bg-gray-50 text-gray-400'
-                            }`}>
+                            <div
+                                className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
+                                    permanentMessage.content
+                                        ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
+                                        : 'bg-gray-50 text-gray-400'
+                                }`}>
                                 {permanentMessage.content || 'No messages'}
                             </div>
                         </div>
