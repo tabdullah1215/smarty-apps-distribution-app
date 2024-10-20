@@ -21,6 +21,9 @@ export default function OwnerDashboard() {
     const [incomingOrderFilter, setIncomingOrderFilter] = useState('');
     const [incomingDateFilter, setIncomingDateFilter] = useState('');
     const [incomingStatusFilter, setIncomingStatusFilter] = useState('');
+    const [distributorsPage, setDistributorsPage] = useState(1);
+    const [ordersPage, setOrdersPage] = useState(1);
+    const itemsPerPage = 10;
 
     const generateLink = async (type) => {
         try {
@@ -182,11 +185,7 @@ export default function OwnerDashboard() {
     useEffect(() => {
         fetchPendingDistributors();
         fetchIncomingOrders();
-    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
-
-    useEffect(() => {
-        fetchIncomingOrders();
-    }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
+    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter, incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8">
@@ -220,27 +219,47 @@ export default function OwnerDashboard() {
         </div>
     );
 
+    const Pagination = ({ currentPage, setCurrentPage, totalItems }) => {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+        return (
+            <div className="flex justify-between items-center mt-4">
+                <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                >
+                    Previous
+                </button>
+                <span>{currentPage} of {totalPages}</span>
+                <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                >
+                    Next
+                </button>
+            </div>
+        );
+    };
+
     return (
         <div className="relative font-roboto">
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
                     <div className="flex flex-col items-start md:items-center">
-                        <div
-                            className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
-                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo"
-                                 className="h-16 mb-2 md:mb-0"/>
-                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner
-                                Dashboard</h1>
+                        <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
+                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32 mb-2 md:mb-0"/>
+                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner Dashboard</h1>
                         </div>
                         {/* Permanent message container with placeholder */}
                         <div className="w-full max-w-2xl mt-2">
-                            <div
-                                className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
-                                    permanentMessage.content
-                                        ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
-                                        : 'bg-gray-50 text-gray-400'
-                                }`}>
+                            <div className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
+                                permanentMessage.content
+                                    ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
+                                    : 'bg-gray-50 text-gray-400'
+                            }`}>
                                 {permanentMessage.content || 'No messages'}
                             </div>
                         </div>
@@ -344,26 +363,35 @@ export default function OwnerDashboard() {
                             <option value="generic">Generic</option>
                         </select>
                     </div>
-                    <table className="w-full border-collapse border">
-                        <thead>
-                        <tr className="bg-gray-200">
-                            <th className="border p-2">Name</th>
-                            <th className="border p-2">Order #</th>
-                            <th className="border p-2">Status</th>
-                            <th className="border p-2">Link Type</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {pendingDistributors.map((distributor, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                                <td className="border p-2">{distributor.DistributorName}</td>
-                                <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
-                                <td className="border p-2">{distributor.Status}</td>
-                                <td className="border p-2">{distributor.LinkType}</td>
+                    <div className="h-[440px] overflow-y-auto">
+                        <table className="w-full border-collapse border">
+                            <thead>
+                            <tr className="bg-gray-200">
+                                <th className="border p-2">Name</th>
+                                <th className="border p-2">Order #</th>
+                                <th className="border p-2">Status</th>
+                                <th className="border p-2">Link Type</th>
                             </tr>
-                        ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                            {pendingDistributors
+                                .slice((distributorsPage - 1) * itemsPerPage, distributorsPage * itemsPerPage)
+                                .map((distributor, index) => (
+                                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                                        <td className="border p-2">{distributor.DistributorName}</td>
+                                        <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
+                                        <td className="border p-2">{distributor.Status}</td>
+                                        <td className="border p-2">{distributor.LinkType}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <Pagination
+                        currentPage={distributorsPage}
+                        setCurrentPage={setDistributorsPage}
+                        totalItems={pendingDistributors.length}
+                    />
                 </div>
 
                 <div className="mt-8">
@@ -392,24 +420,33 @@ export default function OwnerDashboard() {
                             <option value="used">Used</option>
                         </select>
                     </div>
-                    <table className="w-full border-collapse border">
-                        <thead>
-                        <tr className="bg-gray-200">
-                            <th className="border p-2">Order Number</th>
-                            <th className="border p-2">Created At</th>
-                            <th className="border p-2">Status</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {incomingOrders.map((order, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                                <td className="border p-2">{order.OrderNumber}</td>
-                                <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
-                                <td className="border p-2">{order.Status}</td>
+                    <div className="h-[440px] overflow-y-auto">
+                        <table className="w-full border-collapse border">
+                            <thead>
+                            <tr className="bg-gray-200">
+                                <th className="border p-2">Order Number</th>
+                                <th className="border p-2">Created At</th>
+                                <th className="border p-2">Status</th>
                             </tr>
-                        ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                            {incomingOrders
+                                .slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage)
+                                .map((order, index) => (
+                                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
+                                        <td className="border p-2">{order.OrderNumber}</td>
+                                        <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
+                                        <td className="border p-2">{order.Status}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <Pagination
+                        currentPage={ordersPage}
+                        setCurrentPage={setOrdersPage}
+                        totalItems={incomingOrders.length}
+                    />
                 </div>
             </div>
         </div>
