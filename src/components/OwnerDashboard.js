@@ -188,7 +188,7 @@ export default function OwnerDashboard() {
     }, [nameFilter, orderFilter, statusFilter, linkTypeFilter, incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
-        <div className="mt-8">
+        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">{title}</h2>
             <button
                 onClick={generateFn}
@@ -244,7 +244,7 @@ export default function OwnerDashboard() {
     };
 
     return (
-        <div className="relative font-roboto">
+        <div className="relative font-roboto bg-gray-100">
             {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
@@ -268,7 +268,7 @@ export default function OwnerDashboard() {
             </div>
 
             {/* Main content with top padding to account for fixed header */}
-            <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "10rem"}}>
+            <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "12rem"}}>
                 <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
@@ -284,7 +284,7 @@ export default function OwnerDashboard() {
                     copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
                 />
 
-                <div className="mt-8">
+                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Insert Order Number</h2>
                     <form onSubmit={insertOrderNumber} className="flex items-center">
                         <input
@@ -301,7 +301,7 @@ export default function OwnerDashboard() {
                     </form>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
                     <input
                         type="file"
@@ -317,7 +317,7 @@ export default function OwnerDashboard() {
                     </button>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Sync Orders and Distributors</h2>
                     <button
                         onClick={syncOrdersAndDistributors}
@@ -327,7 +327,7 @@ export default function OwnerDashboard() {
                     </button>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Distributors</h2>
                     <div className="mb-4 grid grid-cols-4 gap-4">
                         <input
@@ -394,7 +394,7 @@ export default function OwnerDashboard() {
                     />
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Incoming Orders</h2>
                     <div className="mb-4 grid grid-cols-3 gap-4">
                         <input
