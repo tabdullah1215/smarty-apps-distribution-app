@@ -305,7 +305,7 @@ export default function OwnerDashboard() {
                 </div>
             </div>
 
-            <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "12rem"}}>
+            <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "16rem"}}>
                 <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
