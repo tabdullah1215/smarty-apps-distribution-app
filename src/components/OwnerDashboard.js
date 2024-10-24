@@ -196,10 +196,18 @@ export default function OwnerDashboard() {
         });
     };
 
+// Modify the useEffect hooks that call these functions
     useEffect(() => {
         fetchPendingDistributors();
+        // Reset to page 1 when filters change
+        setDistributorsPage(1);
+    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
+
+    useEffect(() => {
         fetchIncomingOrders();
-    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter, incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
+        // Reset to page 1 when filters change
+        setOrdersPage(1);
+    }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
     const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
@@ -238,14 +246,21 @@ export default function OwnerDashboard() {
     );
 
     const Pagination = ({ currentPage, setCurrentPage, totalItems }) => {
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const validCurrentPage = Math.min(currentPage, totalPages);
+        const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+        const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
         useEffect(() => {
-            if (currentPage !== validCurrentPage) {
+            // Only update if the current page is different from the valid page
+            // and we have items (to prevent unnecessary updates during initial load)
+            if (currentPage !== validCurrentPage && totalItems > 0) {
                 setCurrentPage(validCurrentPage);
             }
-        }, [currentPage, validCurrentPage, setCurrentPage]);
+        }, [currentPage, validCurrentPage, setCurrentPage, totalItems]);
+
+        // Don't show pagination if there are no items
+        if (totalItems === 0) {
+            return <div className="flex justify-center items-center mt-4">No items to display</div>;
+        }
 
         return (
             <div className="flex justify-between items-center mt-4">
@@ -256,10 +271,10 @@ export default function OwnerDashboard() {
                 >
                     Previous
                 </button>
-                <span>{validCurrentPage} of {Math.max(1, totalPages)}</span>
+                <span>{validCurrentPage} of {totalPages}</span>
                 <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={validCurrentPage === totalPages || totalPages === 0}
+                    disabled={validCurrentPage === totalPages}
                     className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
                 >
                     Next
