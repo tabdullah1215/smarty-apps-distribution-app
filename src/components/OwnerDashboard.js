@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
-import { Copy } from 'lucide-react';
+import { Copy, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 
 export default function OwnerDashboard() {
@@ -365,7 +365,17 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Distributors</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Distributors</h2>
+                        <button
+                            onClick={() => fetchPendingDistributors()}
+                            className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300"
+                            title="Refresh distributors"
+                        >
+                            <RefreshCw size={16}/>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
                     <div className="mb-4 grid grid-cols-4 gap-4">
                         <input
                             type="text"
@@ -432,7 +442,17 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Incoming Orders</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Incoming Orders</h2>
+                        <button
+                            onClick={() => fetchIncomingOrders()}
+                            className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300"
+                            title="Refresh orders"
+                        >
+                            <RefreshCw size={16}/>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
                     <div className="mb-4 grid grid-cols-3 gap-4">
                         <input
                             type="text"
