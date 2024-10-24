@@ -25,6 +25,20 @@ export default function OwnerDashboard() {
     const [ordersPage, setOrdersPage] = useState(1);
     const itemsPerPage = 10;
 
+    useEffect(() => {
+        const totalPages = Math.ceil(pendingDistributors.length / itemsPerPage);
+        if (distributorsPage > totalPages && totalPages > 0) {
+            setDistributorsPage(totalPages);
+        }
+    }, [pendingDistributors, distributorsPage]);
+
+    useEffect(() => {
+        const totalPages = Math.ceil(incomingOrders.length / itemsPerPage);
+        if (ordersPage > totalPages && totalPages > 0) {
+            setOrdersPage(totalPages);
+        }
+    }, [incomingOrders, ordersPage]);
+
     const generateLink = async (type) => {
         try {
             setPermanentMessage({ type: '', content: '' });
@@ -225,20 +239,27 @@ export default function OwnerDashboard() {
 
     const Pagination = ({ currentPage, setCurrentPage, totalItems }) => {
         const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const validCurrentPage = Math.min(currentPage, totalPages);
+
+        useEffect(() => {
+            if (currentPage !== validCurrentPage) {
+                setCurrentPage(validCurrentPage);
+            }
+        }, [currentPage, validCurrentPage, setCurrentPage]);
 
         return (
             <div className="flex justify-between items-center mt-4">
                 <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
+                    disabled={validCurrentPage === 1}
                     className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
                 >
                     Previous
                 </button>
-                <span>{currentPage} of {totalPages}</span>
+                <span>{validCurrentPage} of {Math.max(1, totalPages)}</span>
                 <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
+                    disabled={validCurrentPage === totalPages || totalPages === 0}
                     className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
                 >
                     Next
@@ -249,25 +270,19 @@ export default function OwnerDashboard() {
 
     return (
         <div className="relative font-roboto bg-gray-200">
-            {/* Fixed header and message panel */}
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
                     <div className="flex flex-col items-start md:items-center">
-                        <div
-                            className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
-                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo"
-                                 className="h-32 mb-2 md:mb-0"/>
-                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner
-                                Dashboard</h1>
+                        <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
+                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32 mb-2 md:mb-0"/>
+                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner Dashboard</h1>
                         </div>
-                        {/* Permanent message container with placeholder */}
                         <div className="w-full max-w-2xl mt-2">
-                            <div
-                                className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
-                                    permanentMessage.content
-                                        ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
-                                        : 'bg-gray-50 text-gray-400'
-                                }`}>
+                            <div className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
+                                permanentMessage.content
+                                    ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
+                                    : 'bg-gray-50 text-gray-400'
+                            }`}>
                                 {permanentMessage.content || 'No messages'}
                             </div>
                         </div>
@@ -275,7 +290,6 @@ export default function OwnerDashboard() {
                 </div>
             </div>
 
-            {/* Main content with top padding to account for fixed header */}
             <div className="p-8 max-w-6xl mx-auto" style={{paddingTop: "12rem"}}>
                 <LinkGenerator
                     title="Unique Link"
