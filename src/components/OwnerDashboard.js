@@ -378,7 +378,7 @@ export default function OwnerDashboard() {
                             <span>Refresh</span>
                         </button>
                     </div>
-                    <div className="mb-4 grid grid-cols-4 gap-4">
+                    <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                         <input
                             type="text"
                             placeholder="Filter by Name"
@@ -455,7 +455,7 @@ export default function OwnerDashboard() {
                             <span>Refresh</span>
                         </button>
                     </div>
-                    <div className="mb-4 grid grid-cols-3 gap-4">
+                    <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-4">
                         <input
                             type="text"
                             placeholder="Filter by Order #"
