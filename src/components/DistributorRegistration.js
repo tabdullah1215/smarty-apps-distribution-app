@@ -3,8 +3,18 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
 
+const generateRandomEmail = () => {
+    const names = ['john', 'jane', 'bob', 'alice', 'mike', 'sarah', 'chris', 'emma'];
+    const domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com'];
+    const randomNum = Math.floor(Math.random() * 10000);
+    const randomName = names[Math.floor(Math.random() * names.length)];
+    const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+    return `${randomName}${randomNum}@${randomDomain}`;
+};
+
 function DistributorRegistration() {
     const [username, setUsername] = useState('testuser123');
+    const [email, setEmail] = useState(generateRandomEmail());
     const [password, setPassword] = useState('TestPassword123!');
     const [distributorName, setDistributorName] = useState('Test Distributor Inc.');
     const [companyName, setCompanyName] = useState('Test Company Ltd.');
@@ -26,6 +36,7 @@ function DistributorRegistration() {
         try {
             const payload = {
                 username,
+                email,
                 password,
                 token,
                 distributorName,
@@ -81,6 +92,17 @@ function DistributorRegistration() {
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        className="w-full p-2 border rounded"
+                        required
+                    />
+                </div>
+                <div>
+                    <label htmlFor="email" className="block mb-1 text-sm font-medium">Email</label>
+                    <input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="w-full p-2 border rounded"
                         required
                     />
