@@ -333,7 +333,8 @@ export default function OwnerDashboard() {
                             className="flex-grow p-2 border rounded sm:rounded-r-none"
                             required
                         />
-                        <button type="submit" className="py-2 px-4 bg-blue-500 text-white rounded sm:rounded-l-none">
+                        <button type="submit"
+                                className="w-full md:w-fit py-2 px-4 bg-blue-500 text-white rounded sm:rounded-l-none">
                             Insert
                         </button>
                     </form>
@@ -349,7 +350,7 @@ export default function OwnerDashboard() {
                     />
                     <button
                         onClick={processAndUploadCSV}
-                        className="py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
+                        className="w-full md:w-fit py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
                     >
                         Upload CSV
                     </button>
