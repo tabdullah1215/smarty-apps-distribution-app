@@ -235,7 +235,7 @@ export default function OwnerDashboard() {
                     </div>
                 ) : (
                     <div className="p-4 bg-white rounded-lg border-2 border-gray-300">
-                        <p className="text-base text-gray-500 italic">No link generated yet. Click the button above to generate a new link.</p>
+                        <p className="text-base text-gray-500 italic">No link generated yet.</p>
                     </div>
                 )}
                 {copied && (
