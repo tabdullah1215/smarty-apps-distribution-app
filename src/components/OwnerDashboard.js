@@ -303,6 +303,9 @@ export default function OwnerDashboard() {
 
             if (response.data && response.data.message) {
                 setPermanentMessage({ type: 'success', content: response.data.message });
+                if (updatedData.status) {  // Add this condition
+                    setStatusFilter(updatedData.status);  // Add this line
+                }
                 fetchPendingDistributors(); // Refresh with current filters
                 setShowEditModal(false);
             }
