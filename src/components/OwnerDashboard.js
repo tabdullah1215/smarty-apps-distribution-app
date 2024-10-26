@@ -303,7 +303,7 @@ export default function OwnerDashboard() {
 
             if (response.data && response.data.message) {
                 setPermanentMessage({ type: 'success', content: response.data.message });
-                fetchPendingDistributors(); // Refresh the grid
+                setStatusFilter(newStatus);
                 setShowStatusModal(false); // Close the modal
             }
         } catch (error) {
