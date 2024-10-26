@@ -46,6 +46,8 @@ exports.handler = async (event) => {
                 return await handleFetchPendingDistributors(event);
             case 'bulkInsertOrders':
                 return await handleBulkInsertOrders(body);
+            case 'updateDistributorStatus':  // Add this case
+                return await handleUpdateDistributorStatus(body);
             default:
                 return createResponse(400, { message: 'Invalid action' });
         }
@@ -73,6 +75,54 @@ function sanitizeOrderNumber(orderNumber) {
         throw new Error('Order number contains invalid characters. Only alphanumeric characters, hyphens, underscores, and periods are allowed.');
     }
     return orderNumber;
+}
+
+async function handleUpdateDistributorStatus(body) {
+    try {
+        if (!body.email || !body.newStatus) {
+            return createResponse(400, { message: 'Email and new status are required' });
+        }
+
+        // Find the distributor using email index
+        const distributorResult = await ddbDocClient.send(new QueryCommand({
+            TableName: 'Distributors',
+            IndexName: 'EmailIndex',
+            KeyConditionExpression: 'Email = :email',
+            ExpressionAttributeValues: {
+                ':email': body.email
+            }
+        }));
+
+        if (!distributorResult.Items || distributorResult.Items.length === 0) {
+            return createResponse(404, { message: 'Distributor not found' });
+        }
+
+        const distributor = distributorResult.Items[0];
+
+        // Update the distributor's status
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: 'Distributors',
+            Key: {
+                DistributorId: distributor.DistributorId
+            },
+            UpdateExpression: 'SET #status = :newStatus',
+            ExpressionAttributeNames: {
+                '#status': 'Status'
+            },
+            ExpressionAttributeValues: {
+                ':newStatus': body.newStatus
+            }
+        }));
+
+        return createResponse(200, {
+            message: 'Distributor status updated successfully',
+            email: body.email,
+            newStatus: body.newStatus
+        });
+    } catch (error) {
+        console.error('Error updating distributor status:', error);
+        return createResponse(500, { message: 'Error updating distributor status', error: error.message });
+    }
 }
 
 async function handleInsertOrder(body) {
