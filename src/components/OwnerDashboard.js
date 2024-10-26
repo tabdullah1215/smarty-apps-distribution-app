@@ -24,6 +24,8 @@ export default function OwnerDashboard() {
     const [distributorsPage, setDistributorsPage] = useState(1);
     const [ordersPage, setOrdersPage] = useState(1);
     const [emailFilter, setEmailFilter] = useState('');
+    const [selectedDistributor, setSelectedDistributor] = useState(null);
+    const [showStatusModal, setShowStatusModal] = useState(false);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -285,6 +287,75 @@ export default function OwnerDashboard() {
         );
     };
 
+    const handleStatusUpdate = async (newStatus) => {
+        try {
+            setPermanentMessage({ type: '', content: '' });
+            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                {
+                    email: selectedDistributor.Email,
+                    newStatus
+                },
+                {
+                    params: { action: 'updateDistributorStatus' },
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            );
+
+            if (response.data && response.data.message) {
+                setPermanentMessage({ type: 'success', content: response.data.message });
+                fetchPendingDistributors(); // Refresh the grid
+                setShowStatusModal(false); // Close the modal
+            }
+        } catch (error) {
+            console.error('Error updating distributor status:', error);
+            setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to update status' });
+        }
+    };
+
+    const DistributorStatusModal = ({ distributor, onClose, onSubmit }) => {
+        const [newStatus, setNewStatus] = useState(distributor?.Status || '');
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+                    <h2 className="text-xl font-semibold mb-4">Update Status</h2>
+                    <p className="mb-4">
+                        <span className="font-semibold">Distributor: </span>
+                        {distributor?.DistributorName}
+                    </p>
+                    <p className="mb-4">
+                        <span className="font-semibold">Current Status: </span>
+                        {distributor?.Status}
+                    </p>
+                    <select
+                        value={newStatus}
+                        onChange={(e) => setNewStatus(e.target.value)}
+                        className="w-full p-2 border rounded mb-4"
+                    >
+                        <option value="">Select Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="active">Active</option>
+                    </select>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => onSubmit(newStatus)}
+                            disabled={!newStatus || newStatus === distributor?.Status}
+                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
+                        >
+                            Update
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="relative font-roboto bg-gray-200">
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
@@ -437,7 +508,17 @@ export default function OwnerDashboard() {
                                 .slice((distributorsPage - 1) * itemsPerPage, distributorsPage * itemsPerPage)
                                 .map((distributor, index) => (
                                     <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                                        <td className="border p-2">{distributor.DistributorName}</td>
+                                        <td className="border p-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedDistributor(distributor);
+                                                    setShowStatusModal(true);
+                                                }}
+                                                className="text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                            >
+                                                {distributor.DistributorName}
+                                            </button>
+                                        </td>
                                         <td className="border p-2">{distributor.Email || 'N/A'}</td>
                                         <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
                                         <td className="border p-2">{distributor.Status}</td>
@@ -519,6 +600,16 @@ export default function OwnerDashboard() {
                     />
                 </div>
             </div>
+            {showStatusModal && selectedDistributor && (
+                <DistributorStatusModal
+                    distributor={selectedDistributor}
+                    onClose={() => {
+                        setShowStatusModal(false);
+                        setSelectedDistributor(null);
+                    }}
+                    onSubmit={handleStatusUpdate}
+                />
+            )}
         </div>
     );
 }
