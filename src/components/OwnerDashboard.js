@@ -309,6 +309,8 @@ export default function OwnerDashboard() {
         } catch (error) {
             console.error('Error updating distributor status:', error);
             setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to update status' });
+            setShowStatusModal(false);
+            setSelectedDistributor(null);
         }
     };
 
