@@ -404,7 +404,7 @@ async function handleFetchIncomingOrders(event) {
 async function handleFetchPendingDistributors(event) {
     try {
         console.log('Fetching distributors');
-        const { nameFilter, orderFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
+        const { nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
 
         let filterExpression = [];
         let expressionAttributeNames = {};
@@ -414,6 +414,11 @@ async function handleFetchPendingDistributors(event) {
             filterExpression.push('contains(#distributorName, :nameFilter)');
             expressionAttributeNames['#distributorName'] = 'DistributorName';
             expressionAttributeValues[':nameFilter'] = nameFilter;
+        }
+
+        if (emailFilter) {
+            filterExpression.push('contains(Email, :emailFilter)');
+            expressionAttributeValues[':emailFilter'] = emailFilter;
         }
 
         if (orderFilter) {
