@@ -2,7 +2,7 @@
 //LAMBDA POST-UPLOAD CSV FEATURE
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, QueryCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
 
 const ddbClient = new DynamoDBClient({});
@@ -155,8 +155,22 @@ async function handleGenerateToken(body) {
 async function handleRegisterDistributor(body) {
     console.log('Processing distributor registration');
     try {
-        if (!body.token || !body.username || !body.password || !body.distributorName || !body.companyName) {
+        if (!body.token || !body.username || !body.email || !body.password || !body.distributorName || !body.companyName) {
             return createResponse(400, { message: 'Missing required fields' });
+        }
+
+        // Check for existing email using the GSI
+        const existingEmailCheck = await ddbDocClient.send(new QueryCommand({
+            TableName: 'Distributors',
+            IndexName: 'EmailIndex',
+            KeyConditionExpression: 'Email = :email',
+            ExpressionAttributeValues: {
+                ':email': body.email
+            }
+        }));
+
+        if (existingEmailCheck.Items && existingEmailCheck.Items.length > 0) {
+            return createResponse(400, { message: 'Email already registered' });
         }
 
         const tokenResult = await ddbDocClient.send(new GetCommand({
@@ -216,6 +230,7 @@ async function handleRegisterDistributor(body) {
         const distributorItem = {
             DistributorId: distributorId,
             Username: body.username,
+            Email: body.email,
             Password: body.password,
             Token: body.token,
             DistributorName: body.distributorName,
@@ -235,7 +250,9 @@ async function handleRegisterDistributor(body) {
             {
                 Put: {
                     TableName: 'Distributors',
-                    Item: distributorItem
+                    Item: distributorItem,
+                    // Add condition to double-check email uniqueness
+                    ConditionExpression: 'attribute_not_exists(Email)'
                 }
             }
         ];
@@ -273,13 +290,15 @@ async function handleRegisterDistributor(body) {
     } catch (error) {
         console.error('Error registering distributor:', error);
         if (error.name === 'TransactionCanceledException') {
+            // Check if it's due to email conflict
+            if (error.message.includes('ConditionalCheckFailed')) {
+                return createResponse(409, { message: 'Email already registered' });
+            }
             return createResponse(409, { message: 'Registration failed due to a conflict. Please try again.' });
         }
         return createResponse(500, { message: 'Error registering distributor', error: error.message });
     }
 }
-
-
 async function handleSyncOrdersAndDistributors() {
     try {
         const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
