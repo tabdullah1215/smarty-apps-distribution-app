@@ -417,6 +417,7 @@ export default function OwnerDashboard() {
                             <thead>
                             <tr className="bg-gray-200">
                                 <th className="border p-2">Name</th>
+                                <th className="border p-2">Email</th>
                                 <th className="border p-2">Order #</th>
                                 <th className="border p-2">Status</th>
                                 <th className="border p-2">Link Type</th>
@@ -428,6 +429,7 @@ export default function OwnerDashboard() {
                                 .map((distributor, index) => (
                                     <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
                                         <td className="border p-2">{distributor.DistributorName}</td>
+                                        <td className="border p-2">{distributor.Email || 'N/A'}</td>
                                         <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
                                         <td className="border p-2">{distributor.Status}</td>
                                         <td className="border p-2">{distributor.LinkType}</td>
