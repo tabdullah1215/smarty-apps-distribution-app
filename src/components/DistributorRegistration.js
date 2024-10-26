@@ -12,11 +12,23 @@ const generateRandomEmail = () => {
     return `${randomName}${randomNum}@${randomDomain}`;
 };
 
+const generateRandomDistributorName = () => {
+    const prefixes = ['Global', 'Premier', 'Elite', 'Advanced', 'Pro', 'Superior', 'Master', 'Excel'];
+    const businesses = ['Solutions', 'Distributors', 'Enterprises', 'Industries', 'Partners', 'Services', 'Networks', 'Logistics'];
+    const suffixes = ['LLC', 'Inc', 'Co', 'Corporation', 'International', 'Group'];
+
+    const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const randomBusiness = businesses[Math.floor(Math.random() * businesses.length)];
+    const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+
+    return `${randomPrefix} ${randomBusiness} ${randomSuffix}`;
+};
+
 function DistributorRegistration() {
     const [username, setUsername] = useState('testuser123');
     const [email, setEmail] = useState(generateRandomEmail());
     const [password, setPassword] = useState('TestPassword123!');
-    const [distributorName, setDistributorName] = useState('Test Distributor Inc.');
+    const [distributorName, setDistributorName] = useState(generateRandomDistributorName());
     const [companyName, setCompanyName] = useState('Test Company Ltd.');
     const [orderNumber, setOrderNumber] = useState('');
     const [error, setError] = useState('');
