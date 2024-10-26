@@ -335,6 +335,7 @@ export default function OwnerDashboard() {
                         <option value="">Select Status</option>
                         <option value="pending">Pending</option>
                         <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                     </select>
                     <div className="flex justify-end gap-2">
                         <button
@@ -481,6 +482,7 @@ export default function OwnerDashboard() {
                             <option value="">All Statuses</option>
                             <option value="pending">Pending</option>
                             <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
                         </select>
                         <select
                             value={linkTypeFilter}
