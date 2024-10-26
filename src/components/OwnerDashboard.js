@@ -23,6 +23,7 @@ export default function OwnerDashboard() {
     const [incomingStatusFilter, setIncomingStatusFilter] = useState('');
     const [distributorsPage, setDistributorsPage] = useState(1);
     const [ordersPage, setOrdersPage] = useState(1);
+    const [emailFilter, setEmailFilter] = useState('');
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -130,6 +131,7 @@ export default function OwnerDashboard() {
                 params: {
                     action: 'getDistributors',
                     nameFilter,
+                    emailFilter,
                     orderFilter,
                     statusFilter,
                     linkTypeFilter
@@ -201,7 +203,7 @@ export default function OwnerDashboard() {
         fetchPendingDistributors();
         // Reset to page 1 when filters change
         setDistributorsPage(1);
-    }, [nameFilter, orderFilter, statusFilter, linkTypeFilter]);
+    }, [nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter]);
 
     useEffect(() => {
         fetchIncomingOrders();
@@ -378,12 +380,19 @@ export default function OwnerDashboard() {
                             <span>Refresh</span>
                         </button>
                     </div>
-                    <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="mb-4 grid grid-cols-2 md:grid-cols-5 gap-4">
                         <input
                             type="text"
                             placeholder="Filter by Name"
                             value={nameFilter}
                             onChange={(e) => setNameFilter(e.target.value)}
+                            className="p-2 border rounded"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Filter by Email"
+                            value={emailFilter}
+                            onChange={(e) => setEmailFilter(e.target.value)}
                             className="p-2 border rounded"
                         />
                         <input
