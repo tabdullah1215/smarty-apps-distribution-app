@@ -25,7 +25,7 @@ export default function OwnerDashboard() {
     const [ordersPage, setOrdersPage] = useState(1);
     const [emailFilter, setEmailFilter] = useState('');
     const [selectedDistributor, setSelectedDistributor] = useState(null);
-    const [showStatusModal, setShowStatusModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -287,59 +287,106 @@ export default function OwnerDashboard() {
         );
     };
 
-    const handleStatusUpdate = async (newStatus) => {
+    const handleDistributorUpdate = async (updatedData) => {
         try {
             setPermanentMessage({ type: '', content: '' });
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
                 {
-                    email: selectedDistributor.Email,
-                    newStatus
+                    distributorId: selectedDistributor.DistributorId,
+                    ...updatedData
                 },
                 {
-                    params: { action: 'updateDistributorStatus' },
+                    params: { action: 'updateDistributor' },
                     headers: { 'Content-Type': 'application/json' }
                 }
             );
 
             if (response.data && response.data.message) {
                 setPermanentMessage({ type: 'success', content: response.data.message });
-                setStatusFilter(newStatus);
-                setShowStatusModal(false); // Close the modal
+                fetchPendingDistributors(); // Refresh with current filters
+                setShowEditModal(false);
             }
         } catch (error) {
-            console.error('Error updating distributor status:', error);
-            setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to update status' });
-            setShowStatusModal(false);
+            console.error('Error updating distributor:', error);
+            setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to update distributor' });
+            setShowEditModal(false);
             setSelectedDistributor(null);
         }
     };
 
-    const DistributorStatusModal = ({ distributor, onClose, onSubmit }) => {
-        const [newStatus, setNewStatus] = useState(distributor?.Status || '');
+// Rename the modal component to reflect its broader purpose
+    const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
+        const [formData, setFormData] = useState({
+            distributorName: distributor?.DistributorName || '',
+            email: distributor?.Email || '',
+            companyName: distributor?.CompanyName || '',
+            status: distributor?.Status || '',
+            username: distributor?.Username || ''
+        });
+
+        const handleChange = (field, value) => {
+            setFormData(prev => ({
+                ...prev,
+                [field]: value
+            }));
+        };
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white p-6 rounded-lg shadow-xl w-96">
-                    <h2 className="text-xl font-semibold mb-4">Update Status</h2>
-                    <p className="mb-4">
-                        <span className="font-semibold">Distributor: </span>
-                        {distributor?.DistributorName}
-                    </p>
-                    <p className="mb-4">
-                        <span className="font-semibold">Current Status: </span>
-                        {distributor?.Status}
-                    </p>
-                    <select
-                        value={newStatus}
-                        onChange={(e) => setNewStatus(e.target.value)}
-                        className="w-full p-2 border rounded mb-4"
-                    >
-                        <option value="">Select Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                    <div className="flex justify-end gap-2">
+                <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
+                    <h2 className="text-xl font-semibold mb-4">Edit Distributor</h2>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Distributor Name</label>
+                            <input
+                                type="text"
+                                value={formData.distributorName}
+                                onChange={(e) => handleChange('distributorName', e.target.value)}
+                                className="w-full p-2 border rounded"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Email</label>
+                            <input
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => handleChange('email', e.target.value)}
+                                className="w-full p-2 border rounded"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Company Name</label>
+                            <input
+                                type="text"
+                                value={formData.companyName}
+                                onChange={(e) => handleChange('companyName', e.target.value)}
+                                className="w-full p-2 border rounded"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Username</label>
+                            <input
+                                type="text"
+                                value={formData.username}
+                                onChange={(e) => handleChange('username', e.target.value)}
+                                className="w-full p-2 border rounded"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Status</label>
+                            <select
+                                value={formData.status}
+                                onChange={(e) => handleChange('status', e.target.value)}
+                                className="w-full p-2 border rounded"
+                            >
+                                <option value="">Select Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-6">
                         <button
                             onClick={onClose}
                             className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
@@ -347,8 +394,8 @@ export default function OwnerDashboard() {
                             Cancel
                         </button>
                         <button
-                            onClick={() => onSubmit(newStatus)}
-                            disabled={!newStatus || newStatus === distributor?.Status}
+                            onClick={() => onSubmit(formData)}
+                            disabled={Object.keys(formData).every(key => formData[key] === distributor[key])}
                             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
                         >
                             Update
@@ -516,7 +563,7 @@ export default function OwnerDashboard() {
                                             <button
                                                 onClick={() => {
                                                     setSelectedDistributor(distributor);
-                                                    setShowStatusModal(true);
+                                                    setShowEditModal(true);
                                                 }}
                                                 className="text-blue-600 hover:text-blue-800 hover:underline text-left"
                                             >
@@ -604,14 +651,14 @@ export default function OwnerDashboard() {
                     />
                 </div>
             </div>
-            {showStatusModal && selectedDistributor && (
-                <DistributorStatusModal
+            {showEditModal && selectedDistributor && (
+                <DistributorEditModal
                     distributor={selectedDistributor}
                     onClose={() => {
-                        setShowStatusModal(false);
+                        setShowEditModal(false);
                         setSelectedDistributor(null);
                     }}
-                    onSubmit={handleStatusUpdate}
+                    onSubmit={handleDistributorUpdate}
                 />
             )}
         </div>
