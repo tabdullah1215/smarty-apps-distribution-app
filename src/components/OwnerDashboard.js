@@ -452,16 +452,27 @@ export default function OwnerDashboard() {
             <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
                 <div className="max-w-6xl mx-auto px-4 py-3">
                     <div className="flex flex-col items-start md:items-center">
-                        <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
-                            <img src="/images/smartyapps-logo.png" alt="SmartyApps.AI Logo" className="h-32 mb-2 md:mb-0"/>
-                            <h1 className="text-2xl font-bold md:absolute md:left-1/2 md:transform md:-translate-x-1/2">Owner Dashboard</h1>
+                        <div
+                            className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
+                            <div className="flex flex-col md:flex-row md:items-center">
+                                <img
+                                    src="/images/smartyapps-logo.png"
+                                    alt="SmartyApps.AI Logo"
+                                    className="h-32 mb-2 md:mb-0"
+                                />
+                                <div className="md:ml-4 flex flex-col md:border-l md:pl-4">
+                                    <h2 className="text-xl text-gray-600 font-semibold">App Manager</h2>
+                                    <h1 className="text-2xl font-bold text-gray-800">Owner Dashboard</h1>
+                                </div>
+                            </div>
                         </div>
                         <div className="w-full max-w-2xl mt-2">
-                            <div className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
-                                permanentMessage.content
-                                    ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
-                                    : 'bg-gray-50 text-gray-400'
-                            }`}>
+                            <div
+                                className={`p-2 rounded-lg w-full text-center text-sm min-h-[2.5rem] flex items-center justify-center ${
+                                    permanentMessage.content
+                                        ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
+                                        : 'bg-gray-50 text-gray-400'
+                                }`}>
                                 {permanentMessage.content || 'No messages'}
                             </div>
                         </div>
