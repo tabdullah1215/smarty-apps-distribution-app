@@ -454,23 +454,28 @@ export default function OwnerDashboard() {
                     <div className="flex flex-col items-start md:items-center">
                         <div
                             className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
-                            <div className="flex flex-col md:flex-row md:items-center w-full">
+                            <div className="flex flex-col md:flex-row w-full md:items-center">
                                 {/* Center logo and make it smaller on mobile */}
-                                <div className="flex justify-center w-full md:justify-start">
+                                <div className="flex justify-center md:justify-start">
                                     <img
                                         src="/images/smartyapps-logo.png"
                                         alt="SmartyApps.AI Logo"
-                                        className="h-20 md:h-32 mb-1 md:mb-0" // Smaller height on mobile
+                                        className="h-20 md:h-32 mb-1 md:mb-0"
                                     />
                                 </div>
-                                {/* Center text on mobile */}
-                                <div className="md:ml-4 flex flex-col md:border-l md:pl-4 text-center md:text-left">
-                                    <h2 className="text-lg md:text-xl text-gray-600 font-semibold">App Manager</h2>
-                                    <h1 className="text-xl md:text-2xl font-bold text-gray-800">Owner Dashboard</h1>
+                                {/* Center container for App Manager and Owner Dashboard */}
+                                <div className="flex-grow flex justify-center">
+                                    <div className="md:ml-4 flex flex-col md:border-l md:pl-4 text-center">
+                                        <h2 className="text-lg md:text-xl text-gray-600 font-semibold">App Manager</h2>
+                                        <h1 className="text-xl md:text-2xl font-bold text-gray-800">Owner Dashboard</h1>
+                                    </div>
                                 </div>
+                                {/* Add an empty div to balance the logo width */}
+                                <div className="hidden md:block" style={{width: '128px'}}></div>
+                                {/* 128px matches h-32 logo */}
                             </div>
                         </div>
-                        <div className="w-full max-w-2xl mt-1 md:mt-2"> {/* Reduced top margin on mobile */}
+                        <div className="w-full max-w-2xl mt-1 md:mt-2">
                             <div
                                 className={`p-2 rounded-lg w-full text-center text-sm min-h-[2rem] md:min-h-[2.5rem] flex items-center justify-center ${
                                     permanentMessage.content
