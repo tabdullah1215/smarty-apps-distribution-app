@@ -663,7 +663,8 @@ export default function OwnerDashboard() {
                             type="date"
                             value={incomingDateFilter}
                             onChange={(e) => setIncomingDateFilter(e.target.value)}
-                            className="p-2 border rounded"
+                            className="p-2 border rounded w-full max-w-full" // Added max-w-full
+                            style={{ minWidth: 'auto' }} // Added to prevent default date input expansion
                         />
                         <select
                             value={incomingStatusFilter}
