@@ -4,6 +4,30 @@ import { API_ENDPOINT } from '../config';
 import { Copy, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 
+const useDebounce = (callback, delay) => {
+    const timeoutRef = React.useRef(null);
+
+    React.useEffect(() => {
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, []);
+
+    const debouncedCallback = React.useCallback((...args) => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+        }
+
+        timeoutRef.current = setTimeout(() => {
+            callback(...args);
+        }, delay);
+    }, [callback, delay]);
+
+    return debouncedCallback;
+};
+
 export default function OwnerDashboard() {
     const [uniqueLink, setUniqueLink] = useState('');
     const [genericLink, setGenericLink] = useState('');
@@ -55,29 +79,6 @@ export default function OwnerDashboard() {
     }, [incomingOrders, ordersPage]);
 
     // Add this near the top of OwnerDashboard.js after imports
-    const useDebounce = (callback, delay) => {
-        const timeoutRef = React.useRef(null);
-
-        React.useEffect(() => {
-            return () => {
-                if (timeoutRef.current) {
-                    clearTimeout(timeoutRef.current);
-                }
-            };
-        }, []);
-
-        const debouncedCallback = React.useCallback((...args) => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-
-            timeoutRef.current = setTimeout(() => {
-                callback(...args);
-            }, delay);
-        }, [callback, delay]);
-
-        return debouncedCallback;
-    };
 
     const generateLink = async (type) => {
         try {
