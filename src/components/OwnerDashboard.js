@@ -659,13 +659,28 @@ export default function OwnerDashboard() {
                             }}
                             className="p-2 border rounded"
                         />
-                        <input
-                            type="date"
-                            value={incomingDateFilter}
-                            onChange={(e) => setIncomingDateFilter(e.target.value)}
-                            className="p-2 border rounded w-full max-w-full" // Added max-w-full
-                            style={{ minWidth: 'auto' }} // Added to prevent default date input expansion
-                        />
+                        <div className="w-full relative">
+                            <input
+                                type="date"
+                                value={incomingDateFilter}
+                                onChange={(e) => setIncomingDateFilter(e.target.value)}
+                                className={`p-2 border rounded w-full max-w-full ${!incomingDateFilter ? 'text-transparent' : ''}`}
+                                style={{
+                                    WebkitAppearance: 'none',
+                                    MozAppearance: 'none',
+                                    appearance: 'none',
+                                    minWidth: 'auto',  // Kept from previous fix
+                                    maxWidth: '100%'   // Added to reinforce max-w-full
+                                }}
+                                onFocus={(e) => e.target.showPicker()}
+                            />
+                            {!incomingDateFilter && (
+                                <span
+                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        Filter by Date
+                                </span>
+                            )}
+                        </div>
                         <select
                             value={incomingStatusFilter}
                             onChange={(e) => setIncomingStatusFilter(e.target.value)}
