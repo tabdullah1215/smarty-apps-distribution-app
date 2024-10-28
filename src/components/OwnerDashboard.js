@@ -26,6 +26,18 @@ export default function OwnerDashboard() {
     const [emailFilter, setEmailFilter] = useState('');
     const [selectedDistributor, setSelectedDistributor] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
+
+    // Add these new state variables
+    const [nameFilterImmediate, setNameFilterImmediate] = useState('');
+    const [emailFilterImmediate, setEmailFilterImmediate] = useState('');
+    const [orderFilterImmediate, setOrderFilterImmediate] = useState('');
+    const [incomingOrderFilterImmediate, setIncomingOrderFilterImmediate] = useState('');
+
+// Create debounced setters
+    const setNameFilterDebounced = useDebounce((value) => setNameFilter(value), 500);
+    const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
+    const setOrderFilterDebounced = useDebounce((value) => setOrderFilter(value), 500);
+    const setIncomingOrderFilterDebounced = useDebounce((value) => setIncomingOrderFilter(value), 500);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -41,6 +53,31 @@ export default function OwnerDashboard() {
             setOrdersPage(totalPages);
         }
     }, [incomingOrders, ordersPage]);
+
+    // Add this near the top of OwnerDashboard.js after imports
+    const useDebounce = (callback, delay) => {
+        const timeoutRef = React.useRef(null);
+
+        React.useEffect(() => {
+            return () => {
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+            };
+        }, []);
+
+        const debouncedCallback = React.useCallback((...args) => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+
+            timeoutRef.current = setTimeout(() => {
+                callback(...args);
+            }, delay);
+        }, [callback, delay]);
+
+        return debouncedCallback;
+    };
 
     const generateLink = async (type) => {
         try {
@@ -508,22 +545,31 @@ export default function OwnerDashboard() {
                         <input
                             type="text"
                             placeholder="Filter by Name"
-                            value={nameFilter}
-                            onChange={(e) => setNameFilter(e.target.value)}
+                            value={nameFilterImmediate}
+                            onChange={(e) => {
+                                setNameFilterImmediate(e.target.value);
+                                setNameFilterDebounced(e.target.value);
+                            }}
                             className="p-2 border rounded"
                         />
                         <input
                             type="text"
                             placeholder="Filter by Email"
-                            value={emailFilter}
-                            onChange={(e) => setEmailFilter(e.target.value)}
+                            value={emailFilterImmediate}
+                            onChange={(e) => {
+                                setEmailFilterImmediate(e.target.value);
+                                setEmailFilterDebounced(e.target.value);
+                            }}
                             className="p-2 border rounded"
                         />
                         <input
                             type="text"
                             placeholder="Filter by Order #"
-                            value={orderFilter}
-                            onChange={(e) => setOrderFilter(e.target.value)}
+                            value={orderFilterImmediate}
+                            onChange={(e) => {
+                                setOrderFilterImmediate(e.target.value);
+                                setOrderFilterDebounced(e.target.value);
+                            }}
                             className="p-2 border rounded"
                         />
                         <select
@@ -605,8 +651,11 @@ export default function OwnerDashboard() {
                         <input
                             type="text"
                             placeholder="Filter by Order #"
-                            value={incomingOrderFilter}
-                            onChange={(e) => setIncomingOrderFilter(e.target.value)}
+                            value={incomingOrderFilterImmediate}
+                            onChange={(e) => {
+                                setIncomingOrderFilterImmediate(e.target.value);
+                                setIncomingOrderFilterDebounced(e.target.value);
+                            }}
                             className="p-2 border rounded"
                         />
                         <input
