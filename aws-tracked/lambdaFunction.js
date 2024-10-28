@@ -46,8 +46,8 @@ exports.handler = async (event) => {
                 return await handleFetchPendingDistributors(event);
             case 'bulkInsertOrders':
                 return await handleBulkInsertOrders(body);
-            case 'updateDistributorStatus':  // Add this case
-                return await handleUpdateDistributorStatus(body);
+            case 'updateDistributor':  // Add this case
+                return await handleUpdateDistributor(body);
             default:
                 return createResponse(400, { message: 'Invalid action' });
         }
@@ -77,51 +77,74 @@ function sanitizeOrderNumber(orderNumber) {
     return orderNumber;
 }
 
-async function handleUpdateDistributorStatus(body) {
+async function handleUpdateDistributor(body) {
     try {
-        if (!body.email || !body.newStatus) {
-            return createResponse(400, { message: 'Email and new status are required' });
+        if (!body.distributorId) {
+            return createResponse(400, { message: 'Distributor ID is required' });
         }
 
-        // Find the distributor using email index
-        const distributorResult = await ddbDocClient.send(new QueryCommand({
-            TableName: 'Distributors',
-            IndexName: 'EmailIndex',
-            KeyConditionExpression: 'Email = :email',
-            ExpressionAttributeValues: {
-                ':email': body.email
+        const updateExpressions = [];
+        const expressionAttributeNames = {};
+        const expressionAttributeValues = {};
+
+        // Map of fields that can be updated
+        const updatableFields = {
+            email: 'Email',
+            distributorName: 'DistributorName',
+            companyName: 'CompanyName',
+            status: 'Status',
+            username: 'Username'
+        };
+
+        // Build update expression for each field that has a value
+        Object.entries(updatableFields).forEach(([key, dbField]) => {
+            if (body[key] !== undefined) {
+                updateExpressions.push(`#${key} = :${key}`);
+                expressionAttributeNames[`#${key}`] = dbField;
+                expressionAttributeValues[`:${key}`] = body[key];
             }
-        }));
+        });
 
-        if (!distributorResult.Items || distributorResult.Items.length === 0) {
-            return createResponse(404, { message: 'Distributor not found' });
+        if (updateExpressions.length === 0) {
+            return createResponse(400, { message: 'No fields to update' });
         }
 
-        const distributor = distributorResult.Items[0];
+        // If email is being updated, check for uniqueness
+        if (body.email) {
+            const existingEmailCheck = await ddbDocClient.send(new QueryCommand({
+                TableName: 'Distributors',
+                IndexName: 'EmailIndex',
+                KeyConditionExpression: 'Email = :email',
+                ExpressionAttributeValues: {
+                    ':email': body.email
+                }
+            }));
 
-        // Update the distributor's status
+            if (existingEmailCheck.Items?.length > 0 &&
+                existingEmailCheck.Items[0].DistributorId !== body.distributorId) {
+                return createResponse(400, { message: 'Email already registered to another distributor' });
+            }
+        }
+
+        // Update the distributor
         await ddbDocClient.send(new UpdateCommand({
             TableName: 'Distributors',
             Key: {
-                DistributorId: distributor.DistributorId
+                DistributorId: body.distributorId
             },
-            UpdateExpression: 'SET #status = :newStatus',
-            ExpressionAttributeNames: {
-                '#status': 'Status'
-            },
-            ExpressionAttributeValues: {
-                ':newStatus': body.newStatus
-            }
+            UpdateExpression: 'SET ' + updateExpressions.join(', '),
+            ExpressionAttributeNames: expressionAttributeNames,
+            ExpressionAttributeValues: expressionAttributeValues,
+            ReturnValues: 'ALL_NEW'
         }));
 
         return createResponse(200, {
-            message: 'Distributor status updated successfully',
-            email: body.email,
-            newStatus: body.newStatus
+            message: 'Distributor updated successfully',
+            distributorId: body.distributorId
         });
     } catch (error) {
-        console.error('Error updating distributor status:', error);
-        return createResponse(500, { message: 'Error updating distributor status', error: error.message });
+        console.error('Error updating distributor:', error);
+        return createResponse(500, { message: 'Error updating distributor', error: error.message });
     }
 }
 
