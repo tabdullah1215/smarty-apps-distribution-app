@@ -489,7 +489,7 @@ export default function OwnerDashboard() {
                 </div>
             </div>
 
-            <div className="p-8 max-w-6xl mx-auto pt-64 md:pt-48">
+            <div className="p-8 max-w-6xl mx-auto pt-48 md:pt-48">
                 <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
