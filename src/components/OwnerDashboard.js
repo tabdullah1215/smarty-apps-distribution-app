@@ -8,6 +8,7 @@ import { useGenerateLink } from '../hooks/useGenerateLink';
 import DistributorEditModal from './DistributorEditModal';  // Adjust path as needed
 import { useDistributorUpdate } from '../hooks/useDistributorUpdate';
 import DistributorGrid from './DistributorGrid';
+import OrderGrid from './OrderGrid';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -406,89 +407,29 @@ export default function OwnerDashboard() {
                     }
                 />
 
-                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Incoming Orders</h2>
-                        <button
-                            onClick={() => fetchIncomingOrders()}
-                            className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300"
-                            title="Refresh orders"
-                        >
-                            <RefreshCw size={16}/>
-                            <span>Refresh</span>
-                        </button>
-                    </div>
-                    <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <input
-                            type="text"
-                            placeholder="Filter by Order #"
-                            value={incomingOrderFilterImmediate}
-                            onChange={(e) => {
-                                setIncomingOrderFilterImmediate(e.target.value);
-                                setIncomingOrderFilterDebounced(e.target.value);
-                            }}
-                            className="p-2 border rounded"
+                <OrderGrid
+                    orders={incomingOrders}
+                    onRefresh={fetchIncomingOrders}
+                    orderFilterImmediate={incomingOrderFilterImmediate}
+                    dateFilter={incomingDateFilter}
+                    statusFilter={incomingStatusFilter}
+                    onOrderFilterChange={(e) => {
+                        setIncomingOrderFilterImmediate(e.target.value);
+                        setIncomingOrderFilterDebounced(e.target.value);
+                    }}
+                    onDateFilterChange={(e) => setIncomingDateFilter(e.target.value)}
+                    onStatusFilterChange={(e) => setIncomingStatusFilter(e.target.value)}
+                    currentPage={ordersPage}
+                    itemsPerPage={itemsPerPage}
+                    Pagination={
+                        <Pagination
+                            currentPage={ordersPage}
+                            setCurrentPage={setOrdersPage}
+                            totalItems={incomingOrders.length}
                         />
-                        <div className="w-full relative">
-                            <input
-                                type="date"
-                                value={incomingDateFilter}
-                                onChange={(e) => setIncomingDateFilter(e.target.value)}
-                                className={`p-2 border rounded w-full max-w-full ${!incomingDateFilter ? 'text-transparent' : ''}`}
-                                style={{
-                                    WebkitAppearance: 'none',
-                                    MozAppearance: 'none',
-                                    appearance: 'none',
-                                    minWidth: 'auto',  // Kept from previous fix
-                                    maxWidth: '100%'   // Added to reinforce max-w-full
-                                }}
-                                onFocus={(e) => e.target.showPicker()}
-                            />
-                            {!incomingDateFilter && (
-                                <span
-                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                                        Filter by Date
-                                </span>
-                            )}
-                        </div>
-                        <select
-                            value={incomingStatusFilter}
-                            onChange={(e) => setIncomingStatusFilter(e.target.value)}
-                            className="p-2 border rounded"
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="used">Used</option>
-                        </select>
-                    </div>
-                    <div className="h-[440px] overflow-y-auto">
-                        <table className="w-full border-collapse border">
-                            <thead>
-                            <tr className="bg-gray-200">
-                                <th className="border p-2">Order Number</th>
-                                <th className="border p-2">Created At</th>
-                                <th className="border p-2">Status</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {incomingOrders
-                                .slice((ordersPage - 1) * itemsPerPage, ordersPage * itemsPerPage)
-                                .map((order, index) => (
-                                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                                        <td className="border p-2">{order.OrderNumber}</td>
-                                        <td className="border p-2">{new Date(order.CreatedAt).toLocaleString()}</td>
-                                        <td className="border p-2">{order.Status}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <Pagination
-                        currentPage={ordersPage}
-                        setCurrentPage={setOrdersPage}
-                        totalItems={incomingOrders.length}
-                    />
-                </div>
+                    }
+                />
+
             </div>
             {showEditModal && selectedDistributor && (
                 <DistributorEditModal
