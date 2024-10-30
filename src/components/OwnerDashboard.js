@@ -3,6 +3,8 @@ import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { Copy, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
+// At the top of OwnerDashboard.js with other imports
+import LinkGenerator from './LinkGenerator';  // Adjust the path as needed
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
