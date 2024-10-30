@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
-import { Copy, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
-// At the top of OwnerDashboard.js with other imports
 import LinkGenerator from './LinkGenerator';  // Adjust the path as needed
+import { useGenerateLink } from '../hooks/useGenerateLink';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -31,10 +31,7 @@ const useDebounce = (callback, delay) => {
 };
 
 export default function OwnerDashboard() {
-    const [uniqueLink, setUniqueLink] = useState('');
-    const [genericLink, setGenericLink] = useState('');
-    const [copiedUnique, setCopiedUnique] = useState(false);
-    const [copiedGeneric, setCopiedGeneric] = useState(false);
+
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
     const [incomingOrders, setIncomingOrders] = useState([]);
@@ -53,13 +50,11 @@ export default function OwnerDashboard() {
     const [selectedDistributor, setSelectedDistributor] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
-    // Add these new state variables
     const [nameFilterImmediate, setNameFilterImmediate] = useState('');
     const [emailFilterImmediate, setEmailFilterImmediate] = useState('');
     const [orderFilterImmediate, setOrderFilterImmediate] = useState('');
     const [incomingOrderFilterImmediate, setIncomingOrderFilterImmediate] = useState('');
 
-// Create debounced setters
     const setNameFilterDebounced = useDebounce((value) => setNameFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setOrderFilterDebounced = useDebounce((value) => setOrderFilter(value), 500);
@@ -80,43 +75,16 @@ export default function OwnerDashboard() {
         }
     }, [incomingOrders, ordersPage]);
 
-    // Add this near the top of OwnerDashboard.js after imports
-
-    const generateLink = async (type) => {
-        try {
-            setPermanentMessage({ type: '', content: '' });
-            const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                { linkType: type },
-                {
-                    params: { action: 'generateToken' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-            console.log('result:', result);
-            if (result.data && result.data.token) {
-                const link = `${window.location.origin}/register/${type}/${result.data.token}`;
-                if (type === 'unique') {
-                    setUniqueLink(link);
-                } else {
-                    setGenericLink(link);
-                }
-                setPermanentMessage({ type: 'success', content: `${type.charAt(0).toUpperCase() + type.slice(1)} link generated successfully.` });
-            } else {
-                setPermanentMessage({ type: 'error', content: 'Failed to generate link. Please try again.' });
-            }
-        } catch (error) {
-            console.error('Error generating link:', error);
-            setPermanentMessage({ type: 'error', content: 'An error occurred while generating the link. Please try again.' });
-        }
-    };
-
-    const copyToClipboard = (link, setCopied) => {
-        navigator.clipboard.writeText(link).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-            setPermanentMessage({ type: 'success', content: 'Link copied to clipboard.' });
-        });
-    };
+    const {
+        uniqueLink,
+        genericLink,
+        copiedUnique,
+        copiedGeneric,
+        setCopiedUnique,
+        setCopiedGeneric,
+        generateLink,
+        copyToClipboard
+    } = useGenerateLink(setPermanentMessage);
 
     const insertOrderNumber = async (e) => {
         e.preventDefault();
@@ -240,16 +208,13 @@ export default function OwnerDashboard() {
         });
     };
 
-// Modify the useEffect hooks that call these functions
     useEffect(() => {
         fetchPendingDistributors();
-        // Reset to page 1 when filters change
         setDistributorsPage(1);
     }, [nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter]);
 
     useEffect(() => {
         fetchIncomingOrders();
-        // Reset to page 1 when filters change
         setOrdersPage(1);
     }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
@@ -258,14 +223,11 @@ export default function OwnerDashboard() {
         const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
         useEffect(() => {
-            // Only update if the current page is different from the valid page
-            // and we have items (to prevent unnecessary updates during initial load)
             if (currentPage !== validCurrentPage && totalItems > 0) {
                 setCurrentPage(validCurrentPage);
             }
         }, [currentPage, validCurrentPage, setCurrentPage, totalItems]);
 
-        // Don't show pagination if there are no items
         if (totalItems === 0) {
             return <div className="flex justify-center items-center mt-4">No items to display</div>;
         }
@@ -321,7 +283,6 @@ export default function OwnerDashboard() {
         }
     };
 
-// Rename the modal component to reflect its broader purpose
     const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
         const [formData, setFormData] = useState({
             distributorName: distributor?.DistributorName || '',
@@ -421,7 +382,6 @@ export default function OwnerDashboard() {
                         <div
                             className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
                             <div className="flex flex-col md:flex-row w-full md:items-center">
-                                {/* Center logo and make it smaller on mobile */}
                                 <div className="flex justify-center md:justify-start">
                                     <img
                                         src="/images/smartyapps-logo.png"
@@ -429,16 +389,14 @@ export default function OwnerDashboard() {
                                         className="h-20 md:h-32 mb-1 md:mb-0"
                                     />
                                 </div>
-                                {/* Center container for App Manager and Owner Dashboard */}
                                 <div className="flex-grow flex justify-center">
                                     <div className="md:ml-4 flex flex-col md:border-l md:pl-4 text-center">
                                         <h2 className="text-lg md:text-xl text-gray-600 font-semibold">App Manager</h2>
                                         <h1 className="text-xl md:text-2xl font-bold text-gray-800">Owner Dashboard</h1>
                                     </div>
                                 </div>
-                                {/* Add an empty div to balance the logo width */}
+
                                 <div className="hidden md:block" style={{width: '128px'}}></div>
-                                {/* 128px matches h-32 logo */}
                             </div>
                         </div>
                         <div className="w-full max-w-2xl mt-1 md:mt-2">
@@ -454,7 +412,6 @@ export default function OwnerDashboard() {
                     </div>
                 </div>
             </div>
-
             <div className="p-8 max-w-6xl mx-auto pt-48 md:pt-48">
                 <LinkGenerator
                     title="Unique Link"
@@ -470,7 +427,6 @@ export default function OwnerDashboard() {
                     generateFn={() => generateLink('generic')}
                     copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
                 />
-
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Insert Order Number</h2>
                     <form onSubmit={insertOrderNumber}
@@ -489,7 +445,6 @@ export default function OwnerDashboard() {
                         </button>
                     </form>
                 </div>
-
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
                     <input
@@ -505,7 +460,6 @@ export default function OwnerDashboard() {
                         Upload CSV
                     </button>
                 </div>
-
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Sync Orders and Distributors</h2>
                     <button
@@ -515,7 +469,6 @@ export default function OwnerDashboard() {
                         Sync Now
                     </button>
                 </div>
-
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Distributors</h2>
@@ -621,7 +574,6 @@ export default function OwnerDashboard() {
                         totalItems={pendingDistributors.length}
                     />
                 </div>
-
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Incoming Orders</h2>
