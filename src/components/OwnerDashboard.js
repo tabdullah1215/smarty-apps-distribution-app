@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
-import { RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import LinkGenerator from './LinkGenerator';  // Adjust the path as needed
 import { useGenerateLink } from '../hooks/useGenerateLink';
@@ -10,6 +9,7 @@ import { useDistributorUpdate } from '../hooks/useDistributorUpdate';
 import DistributorGrid from './DistributorGrid';
 import OrderGrid from './OrderGrid';
 import InsertOrder from './InsertOrder';
+import SyncOrdersAndDistributors from "./SyncOrdersAndDistributors";
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -337,15 +337,9 @@ export default function OwnerDashboard() {
                     onCsvUpload={handleCSVUpload}
                     onProcessCsv={processAndUploadCSV}
                 />
-                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Sync Orders and Distributors</h2>
-                    <button
-                        onClick={syncOrdersAndDistributors}
-                        className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
-                    >
-                        Sync Now
-                    </button>
-                </div>
+                <SyncOrdersAndDistributors
+                    onSync={syncOrdersAndDistributors}
+                />
                 <DistributorGrid
                     distributors={pendingDistributors}
                     onDistributorClick={(distributor) => {
