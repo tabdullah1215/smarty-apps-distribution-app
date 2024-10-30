@@ -7,6 +7,7 @@ import LinkGenerator from './LinkGenerator';  // Adjust the path as needed
 import { useGenerateLink } from '../hooks/useGenerateLink';
 import DistributorEditModal from './DistributorEditModal';  // Adjust path as needed
 import { useDistributorUpdate } from '../hooks/useDistributorUpdate';
+import DistributorGrid from './DistributorGrid';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -368,111 +369,43 @@ export default function OwnerDashboard() {
                         Sync Now
                     </button>
                 </div>
-                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Distributors</h2>
-                        <button
-                            onClick={() => fetchPendingDistributors()}
-                            className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300"
-                            title="Refresh distributors"
-                        >
-                            <RefreshCw size={16}/>
-                            <span>Refresh</span>
-                        </button>
-                    </div>
-                    <div className="mb-4 grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <input
-                            type="text"
-                            placeholder="Filter by Name"
-                            value={nameFilterImmediate}
-                            onChange={(e) => {
-                                setNameFilterImmediate(e.target.value);
-                                setNameFilterDebounced(e.target.value);
-                            }}
-                            className="p-2 border rounded"
+                <DistributorGrid
+                    distributors={pendingDistributors}
+                    onDistributorClick={(distributor) => {
+                        setSelectedDistributor(distributor);
+                        setShowEditModal(true);
+                    }}
+                    onRefresh={fetchPendingDistributors}
+                    nameFilterImmediate={nameFilterImmediate}
+                    emailFilterImmediate={emailFilterImmediate}
+                    orderFilterImmediate={orderFilterImmediate}
+                    statusFilter={statusFilter}
+                    linkTypeFilter={linkTypeFilter}
+                    onNameFilterChange={(e) => {
+                        setNameFilterImmediate(e.target.value);
+                        setNameFilterDebounced(e.target.value);
+                    }}
+                    onEmailFilterChange={(e) => {
+                        setEmailFilterImmediate(e.target.value);
+                        setEmailFilterDebounced(e.target.value);
+                    }}
+                    onOrderFilterChange={(e) => {
+                        setOrderFilterImmediate(e.target.value);
+                        setOrderFilterDebounced(e.target.value);
+                    }}
+                    onStatusFilterChange={(e) => setStatusFilter(e.target.value)}
+                    onLinkTypeFilterChange={(e) => setLinkTypeFilter(e.target.value)}
+                    currentPage={distributorsPage}
+                    itemsPerPage={itemsPerPage}
+                    Pagination={
+                        <Pagination
+                            currentPage={distributorsPage}
+                            setCurrentPage={setDistributorsPage}
+                            totalItems={pendingDistributors.length}
                         />
-                        <input
-                            type="text"
-                            placeholder="Filter by Email"
-                            value={emailFilterImmediate}
-                            onChange={(e) => {
-                                setEmailFilterImmediate(e.target.value);
-                                setEmailFilterDebounced(e.target.value);
-                            }}
-                            className="p-2 border rounded"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Filter by Order #"
-                            value={orderFilterImmediate}
-                            onChange={(e) => {
-                                setOrderFilterImmediate(e.target.value);
-                                setOrderFilterDebounced(e.target.value);
-                            }}
-                            className="p-2 border rounded"
-                        />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="p-2 border rounded"
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        <select
-                            value={linkTypeFilter}
-                            onChange={(e) => setLinkTypeFilter(e.target.value)}
-                            className="p-2 border rounded"
-                        >
-                            <option value="">All Link Types</option>
-                            <option value="unique">Unique</option>
-                            <option value="generic">Generic</option>
-                        </select>
-                    </div>
-                    <div className="h-[440px] overflow-y-auto">
-                        <table className="w-full border-collapse border">
-                            <thead>
-                            <tr className="bg-gray-200">
-                                <th className="border p-2">Name</th>
-                                <th className="border p-2">Email</th>
-                                <th className="border p-2">Order #</th>
-                                <th className="border p-2">Status</th>
-                                <th className="border p-2">Link Type</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {pendingDistributors
-                                .slice((distributorsPage - 1) * itemsPerPage, distributorsPage * itemsPerPage)
-                                .map((distributor, index) => (
-                                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-100' : ''}>
-                                        <td className="border p-2">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedDistributor(distributor);
-                                                    setShowEditModal(true);
-                                                }}
-                                                className="text-blue-600 hover:text-blue-800 hover:underline text-left"
-                                            >
-                                                {distributor.DistributorName}
-                                            </button>
-                                        </td>
-                                        <td className="border p-2">{distributor.Email || 'N/A'}</td>
-                                        <td className="border p-2">{distributor.OrderNumber || 'N/A'}</td>
-                                        <td className="border p-2">{distributor.Status}</td>
-                                        <td className="border p-2">{distributor.LinkType}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <Pagination
-                        currentPage={distributorsPage}
-                        setCurrentPage={setDistributorsPage}
-                        totalItems={pendingDistributors.length}
-                    />
-                </div>
+                    }
+                />
+
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Incoming Orders</h2>
