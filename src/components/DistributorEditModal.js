@@ -1,7 +1,7 @@
 // components/DistributorEditModal.js
 import React, { useState } from 'react';
 
-const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
+const DistributorEditModal = ({ distributor, onClose, onSubmit, isSubmitting = false }) => {
     const [formData, setFormData] = useState({
         distributorName: distributor?.DistributorName || '',
         email: distributor?.Email || '',
@@ -29,6 +29,7 @@ const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
                             value={formData.distributorName}
                             onChange={(e) => handleChange('distributorName', e.target.value)}
                             className="w-full p-2 border rounded"
+                            disabled={isSubmitting}
                         />
                     </div>
                     <div>
@@ -38,6 +39,7 @@ const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
                             value={formData.email}
                             onChange={(e) => handleChange('email', e.target.value)}
                             className="w-full p-2 border rounded"
+                            disabled={isSubmitting}
                         />
                     </div>
                     <div>
@@ -47,6 +49,7 @@ const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
                             value={formData.companyName}
                             onChange={(e) => handleChange('companyName', e.target.value)}
                             className="w-full p-2 border rounded"
+                            disabled={isSubmitting}
                         />
                     </div>
                     <div>
@@ -56,6 +59,7 @@ const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
                             value={formData.username}
                             onChange={(e) => handleChange('username', e.target.value)}
                             className="w-full p-2 border rounded"
+                            disabled={isSubmitting}
                         />
                     </div>
                     <div>
@@ -64,6 +68,7 @@ const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
                             value={formData.status}
                             onChange={(e) => handleChange('status', e.target.value)}
                             className="w-full p-2 border rounded"
+                            disabled={isSubmitting}
                         >
                             <option value="">Select Status</option>
                             <option value="pending">Pending</option>
@@ -75,16 +80,17 @@ const DistributorEditModal = ({ distributor, onClose, onSubmit }) => {
                 <div className="flex justify-end gap-2 mt-6">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50"
+                        disabled={isSubmitting}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={() => onSubmit(formData)}
-                        disabled={Object.keys(formData).every(key => formData[key] === distributor[key])}
+                        disabled={isSubmitting || Object.keys(formData).every(key => formData[key] === distributor[key])}
                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
                     >
-                        Update
+                        {isSubmitting ? 'Updating...' : 'Update'}
                     </button>
                 </div>
             </div>

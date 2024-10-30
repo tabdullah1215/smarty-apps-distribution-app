@@ -6,6 +6,7 @@ import Papa from 'papaparse';
 import LinkGenerator from './LinkGenerator';  // Adjust the path as needed
 import { useGenerateLink } from '../hooks/useGenerateLink';
 import DistributorEditModal from './DistributorEditModal';  // Adjust path as needed
+import { useDistributorUpdate } from '../hooks/useDistributorUpdate';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -86,6 +87,24 @@ export default function OwnerDashboard() {
         generateLink,
         copyToClipboard
     } = useGenerateLink(setPermanentMessage);
+
+    const { handleDistributorUpdate, isUpdating } = useDistributorUpdate(
+        // onSuccess callback
+        (message, updatedData) => {
+            setPermanentMessage({ type: 'success', content: message });
+            if (updatedData.status) {
+                setStatusFilter(updatedData.status);
+            }
+            fetchPendingDistributors();
+            setShowEditModal(false);
+        },
+        // onError callback
+        (errorMessage) => {
+            setPermanentMessage({ type: 'error', content: errorMessage });
+            setShowEditModal(false);
+            setSelectedDistributor(null);
+        }
+    );
 
     const insertOrderNumber = async (e) => {
         e.preventDefault();
@@ -252,36 +271,6 @@ export default function OwnerDashboard() {
                 </button>
             </div>
         );
-    };
-
-    const handleDistributorUpdate = async (updatedData) => {
-        try {
-            setPermanentMessage({ type: '', content: '' });
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                {
-                    distributorId: selectedDistributor.DistributorId,
-                    ...updatedData
-                },
-                {
-                    params: { action: 'updateDistributor' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-
-            if (response.data && response.data.message) {
-                setPermanentMessage({ type: 'success', content: response.data.message });
-                if (updatedData.status) {  // Add this condition
-                    setStatusFilter(updatedData.status);  // Add this line
-                }
-                fetchPendingDistributors(); // Refresh with current filters
-                setShowEditModal(false);
-            }
-        } catch (error) {
-            console.error('Error updating distributor:', error);
-            setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to update distributor' });
-            setShowEditModal(false);
-            setSelectedDistributor(null);
-        }
     };
 
     return (
@@ -575,7 +564,8 @@ export default function OwnerDashboard() {
                         setShowEditModal(false);
                         setSelectedDistributor(null);
                     }}
-                    onSubmit={handleDistributorUpdate}
+                    onSubmit={(formData) => handleDistributorUpdate(selectedDistributor.DistributorId, formData)}
+                    isSubmitting={isUpdating}
                 />
             )}
         </div>
