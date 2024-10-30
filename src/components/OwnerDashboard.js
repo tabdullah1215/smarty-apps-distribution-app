@@ -9,6 +9,7 @@ import DistributorEditModal from './DistributorEditModal';  // Adjust path as ne
 import { useDistributorUpdate } from '../hooks/useDistributorUpdate';
 import DistributorGrid from './DistributorGrid';
 import OrderGrid from './OrderGrid';
+import InsertOrder from './InsertOrder';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -328,39 +329,14 @@ export default function OwnerDashboard() {
                     generateFn={() => generateLink('generic')}
                     copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
                 />
-                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Insert Order Number</h2>
-                    <form onSubmit={insertOrderNumber}
-                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-0">
-                        <input
-                            type="text"
-                            value={orderNumber}
-                            onChange={(e) => setOrderNumber(e.target.value)}
-                            placeholder="Enter order number"
-                            className="flex-grow p-2 border rounded sm:rounded-r-none"
-                            required
-                        />
-                        <button type="submit"
-                                className="w-full md:w-fit py-2 px-4 bg-blue-500 text-white rounded sm:rounded-l-none">
-                            Insert
-                        </button>
-                    </form>
-                </div>
-                <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
-                    <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleCSVUpload}
-                        className="mb-4"
-                    />
-                    <button
-                        onClick={processAndUploadCSV}
-                        className="w-full md:w-fit py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
-                    >
-                        Upload CSV
-                    </button>
-                </div>
+                <InsertOrder
+                    orderNumber={orderNumber}
+                    onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
+                    onSubmit={insertOrderNumber}
+                    csvFile={csvFile}
+                    onCsvUpload={handleCSVUpload}
+                    onProcessCsv={processAndUploadCSV}
+                />
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Sync Orders and Distributors</h2>
                     <button
@@ -406,7 +382,6 @@ export default function OwnerDashboard() {
                         />
                     }
                 />
-
                 <OrderGrid
                     orders={incomingOrders}
                     onRefresh={fetchIncomingOrders}
