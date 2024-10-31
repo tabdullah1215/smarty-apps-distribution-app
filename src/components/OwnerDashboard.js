@@ -10,6 +10,7 @@ import DistributorGrid from './DistributorGrid';
 import OrderGrid from './OrderGrid';
 import InsertOrder from './InsertOrder';
 import SyncOrdersAndDistributors from "./SyncOrdersAndDistributors";
+import { useIncomingOrders } from '../hooks/useIncomingOrders';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -39,7 +40,6 @@ export default function OwnerDashboard() {
 
     const [orderNumber, setOrderNumber] = useState('');
     const [pendingDistributors, setPendingDistributors] = useState([]);
-    const [incomingOrders, setIncomingOrders] = useState([]);
     const [nameFilter, setNameFilter] = useState('');
     const [orderFilter, setOrderFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
@@ -65,6 +65,12 @@ export default function OwnerDashboard() {
     const setOrderFilterDebounced = useDebounce((value) => setOrderFilter(value), 500);
     const setIncomingOrderFilterDebounced = useDebounce((value) => setIncomingOrderFilter(value), 500);
     const itemsPerPage = 10;
+
+    const {
+        incomingOrders,
+        isLoading: isLoadingOrders,
+        fetchIncomingOrders
+    } = useIncomingOrders(setPermanentMessage);
 
     useEffect(() => {
         const totalPages = Math.ceil(pendingDistributors.length / itemsPerPage);
@@ -177,23 +183,6 @@ export default function OwnerDashboard() {
         }
     };
 
-    const fetchIncomingOrders = async () => {
-        try {
-            const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
-                params: {
-                    action: 'getIncomingOrders',
-                    orderFilter: incomingOrderFilter,
-                    dateFilter: incomingDateFilter,
-                    statusFilter: incomingStatusFilter
-                }
-            });
-            setIncomingOrders(response.data);
-        } catch (error) {
-            console.error('Error fetching incoming orders:', error);
-            setPermanentMessage({ type: 'error', content: 'Failed to fetch incoming orders. Please try again.' });
-        }
-    };
-
     const handleCSVUpload = (event) => {
         const file = event.target.files[0];
         setCsvFile(file);
@@ -237,7 +226,11 @@ export default function OwnerDashboard() {
     }, [nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter]);
 
     useEffect(() => {
-        fetchIncomingOrders();
+        fetchIncomingOrders({
+            orderFilter: incomingOrderFilter,
+            dateFilter: incomingDateFilter,
+            statusFilter: incomingStatusFilter
+        });
         setOrdersPage(1);
     }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
@@ -378,7 +371,11 @@ export default function OwnerDashboard() {
                 />
                 <OrderGrid
                     orders={incomingOrders}
-                    onRefresh={fetchIncomingOrders}
+                    onRefresh={() => fetchIncomingOrders({
+                        orderFilter: incomingOrderFilter,
+                        dateFilter: incomingDateFilter,
+                        statusFilter: incomingStatusFilter
+                    })}
                     orderFilterImmediate={incomingOrderFilterImmediate}
                     dateFilter={incomingDateFilter}
                     statusFilter={incomingStatusFilter}
@@ -390,6 +387,7 @@ export default function OwnerDashboard() {
                     onStatusFilterChange={(e) => setIncomingStatusFilter(e.target.value)}
                     currentPage={ordersPage}
                     itemsPerPage={itemsPerPage}
+                    isLoading={isLoadingOrders}
                     Pagination={
                         <Pagination
                             currentPage={ordersPage}
