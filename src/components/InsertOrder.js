@@ -1,6 +1,4 @@
-
-// components/InsertOrder.js
-import React from 'react';
+import React, { useRef } from 'react';
 
 const InsertOrder = ({
                          orderNumber,
@@ -11,6 +9,8 @@ const InsertOrder = ({
                          onCsvUpload,
                          onProcessCsv
                      }) => {
+    const fileInputRef = useRef(null);
+
     return (
         <>
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
@@ -36,6 +36,7 @@ const InsertOrder = ({
                 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold mb-4">Bulk Upload Incoming Orders</h2>
                     <input
+                        ref={fileInputRef}
                         type="file"
                         accept=".csv"
                         onChange={onCsvUpload}

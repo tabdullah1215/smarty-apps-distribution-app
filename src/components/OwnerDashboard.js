@@ -212,6 +212,13 @@ export default function OwnerDashboard() {
                     );
                     setPermanentMessage({ type: 'success', content: response.data.message });
                     fetchIncomingOrders({});
+                    // Reset the file state and input
+                    setCsvFile(null);
+                    // Reset the file input value
+                    const fileInput = document.querySelector('input[type="file"]');
+                    if (fileInput) {
+                        fileInput.value = '';
+                    }
                 } catch (error) {
                     console.error('Error uploading orders:', error);
                     setPermanentMessage({ type: 'error', content: 'Failed to upload orders. Please try again.' });
