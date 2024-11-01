@@ -12,6 +12,7 @@ import InsertOrder from './InsertOrder';
 import SyncOrdersAndDistributors from "./SyncOrdersAndDistributors";
 import { useIncomingOrders } from '../hooks/useIncomingOrders';
 import Pagination from './Pagination';
+import { useOrderInsert } from '../hooks/useOrderInsert';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -73,6 +74,19 @@ export default function OwnerDashboard() {
         fetchIncomingOrders
     } = useIncomingOrders(setPermanentMessage);
 
+    const { insertOrderNumber, isInserting } = useOrderInsert(
+        setPermanentMessage,
+        () => {
+            setOrderNumber('');
+            fetchIncomingOrders({});
+        }
+    );
+
+    const handleOrderSubmit = (e) => {
+        e.preventDefault();
+        insertOrderNumber(orderNumber);
+    };
+
     useEffect(() => {
         const totalPages = Math.ceil(pendingDistributors.length / itemsPerPage);
         if (distributorsPage > totalPages && totalPages > 0) {
@@ -115,36 +129,6 @@ export default function OwnerDashboard() {
             setSelectedDistributor(null);
         }
     );
-
-    const insertOrderNumber = async (e) => {
-        e.preventDefault();
-        const url = `${API_ENDPOINT}/insert-order`;
-        console.log('Calling API at:', url);
-        try {
-            setPermanentMessage({ type: '', content: '' });
-
-            const response = await axios.post(url,
-                { orderNumber },
-                {
-                    params: { action: 'insertOrder' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-
-            console.log('Order insertion response:', response.data);
-
-            if (response.data && response.data.message) {
-                setPermanentMessage({ type: 'success', content: `${response.data.message} - Order number: ${orderNumber}` });
-                setOrderNumber('');
-                fetchIncomingOrders({});
-            } else {
-                setPermanentMessage({ type: 'error', content: 'Unexpected response from server. Please try again.' });
-            }
-        } catch (error) {
-            console.error('Error inserting order number:', error);
-            setPermanentMessage({ type: 'error', content: error.response?.data?.message || 'Failed to insert order number. Please try again.' });
-        }
-    };
 
     const syncOrdersAndDistributors = async () => {
         try {
@@ -298,10 +282,11 @@ export default function OwnerDashboard() {
                 <InsertOrder
                     orderNumber={orderNumber}
                     onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
-                    onSubmit={insertOrderNumber}
+                    onSubmit={handleOrderSubmit}
                     csvFile={csvFile}
                     onCsvUpload={handleCSVUpload}
                     onProcessCsv={processAndUploadCSV}
+                    isInserting={isInserting}
                 />
                 <SyncOrdersAndDistributors
                     onSync={syncOrdersAndDistributors}
