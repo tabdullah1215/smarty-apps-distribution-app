@@ -13,6 +13,7 @@ import SyncOrdersAndDistributors from "./SyncOrdersAndDistributors";
 import { useIncomingOrders } from '../hooks/useIncomingOrders';
 import Pagination from './Pagination';
 import { useOrderInsert } from '../hooks/useOrderInsert';
+import { useCSVUpload } from '../hooks/useCSVUpload';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -46,7 +47,6 @@ export default function OwnerDashboard() {
     const [orderFilter, setOrderFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
     const [linkTypeFilter, setLinkTypeFilter] = useState('');
-    const [csvFile, setCsvFile] = useState(null);
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
     const [incomingOrderFilter, setIncomingOrderFilter] = useState('');
     const [incomingDateFilter, setIncomingDateFilter] = useState('');
@@ -68,6 +68,8 @@ export default function OwnerDashboard() {
     const setIncomingOrderFilterDebounced = useDebounce((value) => setIncomingOrderFilter(value), 500);
     const itemsPerPage = 10;
 
+    const fileInputRef = useRef(null);
+
     const {
         incomingOrders,
         isLoading: isLoadingOrders,
@@ -81,6 +83,15 @@ export default function OwnerDashboard() {
             fetchIncomingOrders({});
         }
     );
+
+    const {
+        csvFile,
+        isUploading,
+        handleFileChange,
+        processAndUploadCSV
+    } = useCSVUpload(setPermanentMessage, () => {
+        fetchIncomingOrders({});
+    }, fileInputRef);
 
     const handleOrderSubmit = (e) => {
         e.preventDefault();
@@ -168,50 +179,6 @@ export default function OwnerDashboard() {
         }
     };
 
-    const handleCSVUpload = (event) => {
-        const file = event.target.files[0];
-        setCsvFile(file);
-    };
-
-    const processAndUploadCSV = async () => {
-        if (!csvFile) {
-            setPermanentMessage({ type: 'error', content: 'Please select a CSV file first.' });
-            return;
-        }
-
-        Papa.parse(csvFile, {
-            complete: async (result) => {
-                const orders = result.data.map(row => ({
-                    orderNumber: row[0],
-                    createdAt: row[1]
-                })).filter(order => order.orderNumber && order.createdAt);
-
-                try {
-                    const response = await axios.post(`${API_ENDPOINT}/bulk-insert-orders`,
-                        { orders },
-                        {
-                            params: { action: 'bulkInsertOrders' },
-                            headers: { 'Content-Type': 'application/json' }
-                        }
-                    );
-                    setPermanentMessage({ type: 'success', content: response.data.message });
-                    fetchIncomingOrders({});
-                    // Reset the file state and input
-                    setCsvFile(null);
-                    // Reset the file input value
-                    const fileInput = document.querySelector('input[type="file"]');
-                    if (fileInput) {
-                        fileInput.value = '';
-                    }
-                } catch (error) {
-                    console.error('Error uploading orders:', error);
-                    setPermanentMessage({ type: 'error', content: 'Failed to upload orders. Please try again.' });
-                }
-            },
-            header: false
-        });
-    };
-
     useEffect(() => {
         fetchPendingDistributors();
         setDistributorsPage(1);
@@ -284,9 +251,11 @@ export default function OwnerDashboard() {
                     onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
                     onSubmit={handleOrderSubmit}
                     csvFile={csvFile}
-                    onCsvUpload={handleCSVUpload}
+                    onCsvUpload={handleFileChange}
                     onProcessCsv={processAndUploadCSV}
                     isInserting={isInserting}
+                    isUploading={isUploading}
+                    fileInputRef={fileInputRef}  // Pass the ref to InsertOrder
                 />
                 <SyncOrdersAndDistributors
                     onSync={syncOrdersAndDistributors}

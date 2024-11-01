@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 
 const InsertOrder = ({
                          orderNumber,
@@ -7,10 +7,11 @@ const InsertOrder = ({
                          isShowBulkUpload = true,
                          csvFile,
                          onCsvUpload,
-                         onProcessCsv
+                         onProcessCsv,
+                         isInserting,
+                         isUploading,
+                         fileInputRef  // Use the passed ref instead of creating our own
                      }) => {
-    const fileInputRef = useRef(null);
-
     return (
         <>
             <div className="mt-8 bg-white rounded-lg shadow-md p-6">
@@ -23,11 +24,15 @@ const InsertOrder = ({
                         onChange={onOrderNumberChange}
                         placeholder="Enter order number"
                         className="flex-grow p-2 border rounded sm:rounded-r-none"
+                        disabled={isInserting}
                         required
                     />
-                    <button type="submit"
-                            className="w-full md:w-fit py-2 px-4 bg-blue-500 text-white rounded sm:rounded-l-none">
-                        Insert
+                    <button
+                        type="submit"
+                        className="w-full md:w-fit py-2 px-4 bg-blue-500 text-white rounded sm:rounded-l-none disabled:bg-blue-300"
+                        disabled={isInserting}
+                    >
+                        {isInserting ? 'Inserting...' : 'Insert'}
                     </button>
                 </form>
             </div>
@@ -41,12 +46,14 @@ const InsertOrder = ({
                         accept=".csv"
                         onChange={onCsvUpload}
                         className="mb-4"
+                        disabled={isUploading}
                     />
                     <button
                         onClick={onProcessCsv}
-                        className="w-full md:w-fit py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300"
+                        disabled={!csvFile || isUploading}
+                        className="w-full md:w-fit py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600 transition duration-300 disabled:bg-green-300"
                     >
-                        Upload CSV
+                        {isUploading ? 'Uploading...' : 'Upload CSV'}
                     </button>
                 </div>
             )}
