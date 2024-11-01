@@ -136,7 +136,7 @@ export default function OwnerDashboard() {
             if (response.data && response.data.message) {
                 setPermanentMessage({ type: 'success', content: `${response.data.message} - Order number: ${orderNumber}` });
                 setOrderNumber('');
-                fetchIncomingOrders();
+                fetchIncomingOrders({});
             } else {
                 setPermanentMessage({ type: 'error', content: 'Unexpected response from server. Please try again.' });
             }
@@ -158,7 +158,7 @@ export default function OwnerDashboard() {
             );
             setPermanentMessage({ type: 'success', content: response.data.message });
             fetchPendingDistributors();
-            fetchIncomingOrders();
+            fetchIncomingOrders({});
         } catch (error) {
             console.error('Error syncing orders and distributors:', error);
             setPermanentMessage({ type: 'error', content: 'Failed to sync orders and distributors. Please try again.' });
@@ -211,7 +211,7 @@ export default function OwnerDashboard() {
                         }
                     );
                     setPermanentMessage({ type: 'success', content: response.data.message });
-                    fetchIncomingOrders();
+                    fetchIncomingOrders({});
                 } catch (error) {
                     console.error('Error uploading orders:', error);
                     setPermanentMessage({ type: 'error', content: 'Failed to upload orders. Please try again.' });

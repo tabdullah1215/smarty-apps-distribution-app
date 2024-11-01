@@ -1,4 +1,3 @@
-
 // hooks/useIncomingOrders.js
 import { useState } from 'react';
 import axios from 'axios';
@@ -8,7 +7,8 @@ export const useIncomingOrders = (setPermanentMessage) => {
     const [incomingOrders, setIncomingOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fetchIncomingOrders = async ({ orderFilter, dateFilter, statusFilter }) => {
+    const fetchIncomingOrders = async (params = {}) => {
+        const { orderFilter = '', dateFilter = '', statusFilter = '' } = params;
         setIsLoading(true);
         try {
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
