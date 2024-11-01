@@ -20,6 +20,7 @@ const DistributorGrid = ({
                              currentPage,
                              itemsPerPage,
                              Pagination,
+                             isLoading
                          }) => {
     return (
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
@@ -27,11 +28,12 @@ const DistributorGrid = ({
                 <h2 className="text-xl font-semibold">Distributors</h2>
                 <button
                     onClick={onRefresh}
-                    className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300"
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300 disabled:bg-gray-300 w-full sm:w-auto"
                     title="Refresh distributors"
                 >
-                    <RefreshCw size={16}/>
-                    <span>Refresh</span>
+                    <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/>
+                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
             </div>
             <div className="mb-4 grid grid-cols-2 md:grid-cols-5 gap-4">

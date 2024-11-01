@@ -14,6 +14,7 @@ import Pagination from './Pagination';
 import { useOrderInsert } from '../hooks/useOrderInsert';
 import { useCSVUpload } from '../hooks/useCSVUpload';
 import { useSyncOrders } from '../hooks/useSyncOrders';
+import { usePendingDistributors } from '../hooks/usePendingDistributors';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -42,7 +43,6 @@ const useDebounce = (callback, delay) => {
 export default function OwnerDashboard() {
 
     const [orderNumber, setOrderNumber] = useState('');
-    const [pendingDistributors, setPendingDistributors] = useState([]);
     const [nameFilter, setNameFilter] = useState('');
     const [orderFilter, setOrderFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
@@ -83,6 +83,12 @@ export default function OwnerDashboard() {
             fetchIncomingOrders({});
         }
     );
+
+    const {
+        pendingDistributors,
+        isLoading: isLoadingDistributors,
+        fetchPendingDistributors
+    } = usePendingDistributors(setPermanentMessage);
 
     const {
         csvFile,
@@ -149,27 +155,14 @@ export default function OwnerDashboard() {
         }
     );
 
-    const fetchPendingDistributors = async () => {
-        try {
-            const response = await axios.get(`${API_ENDPOINT}/get-distributors`, {
-                params: {
-                    action: 'getDistributors',
-                    nameFilter,
-                    emailFilter,
-                    orderFilter,
-                    statusFilter,
-                    linkTypeFilter
-                }
-            });
-            setPendingDistributors(response.data);
-        } catch (error) {
-            console.error('Error fetching pending distributors:', error);
-            setPermanentMessage({ type: 'error', content: 'Failed to fetch pending distributors. Please try again.' });
-        }
-    };
-
     useEffect(() => {
-        fetchPendingDistributors();
+        fetchPendingDistributors({
+            nameFilter,
+            emailFilter,
+            orderFilter,
+            statusFilter,
+            linkTypeFilter
+        });
         setDistributorsPage(1);
     }, [nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter]);
 
@@ -256,7 +249,13 @@ export default function OwnerDashboard() {
                         setSelectedDistributor(distributor);
                         setShowEditModal(true);
                     }}
-                    onRefresh={fetchPendingDistributors}
+                    onRefresh={() => fetchPendingDistributors({
+                        nameFilter,
+                        emailFilter,
+                        orderFilter,
+                        statusFilter,
+                        linkTypeFilter
+                    })}
                     nameFilterImmediate={nameFilterImmediate}
                     emailFilterImmediate={emailFilterImmediate}
                     orderFilterImmediate={orderFilterImmediate}
@@ -276,6 +275,7 @@ export default function OwnerDashboard() {
                     }}
                     onStatusFilterChange={(e) => setStatusFilter(e.target.value)}
                     onLinkTypeFilterChange={(e) => setLinkTypeFilter(e.target.value)}
+                    isLoading={isLoadingDistributors}
                     currentPage={distributorsPage}
                     itemsPerPage={itemsPerPage}
                     Pagination={
