@@ -13,6 +13,7 @@ import { useIncomingOrders } from '../hooks/useIncomingOrders';
 import Pagination from './Pagination';
 import { useOrderInsert } from '../hooks/useOrderInsert';
 import { useCSVUpload } from '../hooks/useCSVUpload';
+import { useSyncOrders } from '../hooks/useSyncOrders';
 
 const useDebounce = (callback, delay) => {
     const timeoutRef = React.useRef(null);
@@ -97,6 +98,14 @@ export default function OwnerDashboard() {
         insertOrderNumber(orderNumber);
     };
 
+    const { syncOrdersAndDistributors, isSyncing } = useSyncOrders(
+        setPermanentMessage,
+        () => {
+            fetchPendingDistributors();
+            fetchIncomingOrders({});
+        }
+    );
+
     useEffect(() => {
         const totalPages = Math.ceil(pendingDistributors.length / itemsPerPage);
         if (distributorsPage > totalPages && totalPages > 0) {
@@ -139,25 +148,6 @@ export default function OwnerDashboard() {
             setSelectedDistributor(null);
         }
     );
-
-    const syncOrdersAndDistributors = async () => {
-        try {
-            setPermanentMessage({ type: '', content: '' });
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                {},
-                {
-                    params: { action: 'syncOrdersAndDistributors' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-            setPermanentMessage({ type: 'success', content: response.data.message });
-            fetchPendingDistributors();
-            fetchIncomingOrders({});
-        } catch (error) {
-            console.error('Error syncing orders and distributors:', error);
-            setPermanentMessage({ type: 'error', content: 'Failed to sync orders and distributors. Please try again.' });
-        }
-    };
 
     const fetchPendingDistributors = async () => {
         try {
@@ -258,6 +248,7 @@ export default function OwnerDashboard() {
                 />
                 <SyncOrdersAndDistributors
                     onSync={syncOrdersAndDistributors}
+                    isSyncing={isSyncing}  // Pass the loading state to the component
                 />
                 <DistributorGrid
                     distributors={pendingDistributors}
