@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { API_ENDPOINT } from '../config';
 import LinkGenerator from './LinkGenerator';  // Adjust the path as needed
 import { useGenerateLink } from '../hooks/useGenerateLink';
 import DistributorEditModal from './DistributorEditModal';  // Adjust path as needed
@@ -15,30 +13,7 @@ import { useOrderInsert } from '../hooks/useOrderInsert';
 import { useCSVUpload } from '../hooks/useCSVUpload';
 import { useSyncOrders } from '../hooks/useSyncOrders';
 import { usePendingDistributors } from '../hooks/usePendingDistributors';
-
-const useDebounce = (callback, delay) => {
-    const timeoutRef = React.useRef(null);
-
-    React.useEffect(() => {
-        return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
-    }, []);
-
-    const debouncedCallback = React.useCallback((...args) => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
-
-        timeoutRef.current = setTimeout(() => {
-            callback(...args);
-        }, delay);
-    }, [callback, delay]);
-
-    return debouncedCallback;
-};
+import { useDebounce } from '../hooks/useDebounce';
 
 export default function OwnerDashboard() {
 
