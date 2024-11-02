@@ -48,6 +48,8 @@ exports.handler = async (event) => {
                 return await handleBulkInsertOrders(body);
             case 'updateDistributor':  // Add this case
                 return await handleUpdateDistributor(body);
+            case 'verifyCredentials':
+                return await handleVerifyCredentials(body);
             default:
                 return createResponse(400, { message: 'Invalid action' });
         }
@@ -59,6 +61,51 @@ exports.handler = async (event) => {
         return createResponse(500, { message: 'Internal Server Error', error: error.message });
     }
 };
+
+async function handleVerifyCredentials(body) {
+    try {
+        if (!body.email || !body.password) {
+            return createResponse(400, { message: 'Email and password are required' });
+        }
+
+        // Query the Distributors table using the email
+        const result = await ddbDocClient.send(new QueryCommand({
+            TableName: 'Distributors',
+            IndexName: 'EmailIndex',  // Use the GSI for email-based lookups
+            KeyConditionExpression: 'Email = :email',
+            ExpressionAttributeValues: {
+                ':email': body.email
+            }
+        }));
+
+        if (result.Items && result.Items.length > 0) {
+            const distributor = result.Items[0];
+
+            // Simple password check (pre-JWT)
+            if (distributor.Password === body.password) {
+                return createResponse(200, {
+                    verified: true,
+                    distributorName: distributor.DistributorName,  // Optionally return additional info
+                    status: distributor.Status
+                });
+            }
+        }
+
+        // If no match found or password doesn't match
+        return createResponse(401, {
+            verified: false,
+            message: 'Invalid email or password'
+        });
+
+    } catch (error) {
+        console.error('Error verifying credentials:', error);
+        return createResponse(500, {
+            message: 'Error verifying credentials',
+            error: error.message
+        });
+    }
+}
+
 
 function sanitizeOrderNumber(orderNumber) {
     orderNumber = String(orderNumber);
