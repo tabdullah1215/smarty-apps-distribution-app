@@ -80,7 +80,7 @@ function DistributorRegistration() {
                 navigate('/login', {
                     state: {
                         registration: 'success',
-                        username: email,  // Pass username to pre-fill login form
+                        email: email,  // Pass username to pre-fill login form
                         message: 'Registration successful! Please log in with your credentials.'
                     }
                 });

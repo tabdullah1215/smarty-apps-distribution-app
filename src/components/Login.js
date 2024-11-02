@@ -15,7 +15,7 @@ function Login() {
     useEffect(() => {
         if (location.state?.registration === 'success') {
             setSuccessMessage(location.state.message);
-            setEmail(location.state.username || '');
+            setEmail(location.state.email || '');  // Updated to use email
             window.history.replaceState({}, document.title);
         }
     }, [location]);
