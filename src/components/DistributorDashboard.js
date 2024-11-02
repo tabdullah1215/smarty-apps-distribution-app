@@ -1,11 +1,12 @@
 // DistributorDashboard.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardHeader from './DashboardHeader';
 
 function DistributorDashboard() {
     const navigate = useNavigate();
     const username = localStorage.getItem('distributor_username');
+    const [permanentMessage] = useState({ type: '', content: '' });
 
     useEffect(() => {
         if (!username) {
@@ -22,6 +23,7 @@ function DistributorDashboard() {
             <DashboardHeader
                 title="Distributor Dashboard"
                 centerContent={<p className="text-gray-600">Welcome, {username}!</p>}
+                permanentMessage={permanentMessage}  // Added permanentMessage prop
             />
             <div className="p-8 max-w-6xl mx-auto pt-48">
                 <div className="bg-white rounded-lg shadow-md p-8">

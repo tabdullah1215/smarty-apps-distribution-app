@@ -7,15 +7,14 @@ import DashboardHeader from './DashboardHeader';
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
+    const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
 
     useEffect(() => {
         if (location.state?.registration === 'success') {
-            setSuccessMessage(location.state.message);
+            setPermanentMessage({ type: 'success', content: location.state.message });
             setEmail(location.state.email || '');  // Updated to use email
             window.history.replaceState({}, document.title);
         }
@@ -23,8 +22,7 @@ function Login() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccessMessage('');
+        setPermanentMessage({ type: '', content: '' });  // Reset message
         setIsLoading(true);
 
         try {
@@ -37,15 +35,17 @@ function Login() {
             );
 
             if (response.data.verified) {
-                // Store basic user info in localStorage (temporary solution pre-JWT)
+                setPermanentMessage({ type: 'success', content: 'Login successful!' });
                 localStorage.setItem('distributor_username', email);
                 navigate('/distributor');
             } else {
-                setError('Invalid email or password');
+                const errorMsg = 'Invalid email or password';
+                setPermanentMessage({ type: 'error', content: errorMsg });
             }
         } catch (error) {
             console.error('Login error:', error);
-            setError(error.response?.data?.message || 'Failed to login. Please try again.');
+            const errorMsg = error.response?.data?.message || 'Failed to login. Please try again.';
+            setPermanentMessage({ type: 'error', content: errorMsg });  // Add error message
         } finally {
             setIsLoading(false);
         }
@@ -55,12 +55,7 @@ function Login() {
         <div className="min-h-screen bg-gray-100">
             <DashboardHeader
                 title="Login"
-                permanentMessage={
-                    (error || successMessage) && {
-                        type: error ? 'error' : 'success',
-                        content: error || successMessage
-                    }
-                }
+                permanentMessage={permanentMessage}  // Updated to use permanentMessage state
             />
             <div className="py-8 pt-48">
                 <div className="max-w-md mx-auto">

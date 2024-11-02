@@ -31,10 +31,9 @@ function DistributorRegistration() {
     const [distributorName, setDistributorName] = useState(generateRandomDistributorName());
     const [companyName, setCompanyName] = useState('Test Company Ltd.');
     const [orderNumber, setOrderNumber] = useState('');
-    const [error, setError] = useState('');
     const { linkType, token } = useParams();
     const navigate = useNavigate();
-    const [message, setMessage] = useState(null);
+    const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
 
     useEffect(() => {
         if (linkType === 'generic') {
@@ -45,7 +44,7 @@ function DistributorRegistration() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
+        setPermanentMessage({ type: '', content: '' });
         try {
             const payload = {
                 username: email,
@@ -88,15 +87,12 @@ function DistributorRegistration() {
                 });
             } else {
                 console.log("Unexpected response message:", response.data.message);
-                setError('Registration failed. Please try again.');
+                setPermanentMessage({ type: 'error', content: 'Registration failed. Please try again.' });
             }
         } catch (error) {
             console.log('Distributor registration failed:', error.response?.data?.message || error.message);
-            if (error.response && error.response.data && error.response.data.message) {
-                setError(error.response.data.message);
-            } else {
-                setError('An error occurred during registration. Please try again.');
-            }
+            const errorMessage = error.response?.data?.message || 'An error occurred during registration. Please try again.';
+            setPermanentMessage({ type: 'error', content: errorMessage });
         }
     };
 
@@ -105,74 +101,73 @@ function DistributorRegistration() {
             <DashboardHeader
                 title="Distributor Registration"
                 subtitle={`Registration Type: ${linkType}`}
-                permanentMessage={message && {
-                    type: error ? 'error' : 'success',
-                    content: error || message
-                }}
+                permanentMessage={permanentMessage}
             />
             <div className="p-8 max-w-md mx-auto pt-48">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label htmlFor="email" className="block mb-1 text-sm font-medium">Email</label>
-                    <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
+                <div className="bg-white rounded-lg shadow-md p-8">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label htmlFor="email" className="block mb-1 text-sm font-medium">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full p-2 border rounded"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="password" className="block mb-1 text-sm font-medium">Password</label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full p-2 border rounded"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="distributorName" className="block mb-1 text-sm font-medium">Distributor Name</label>
+                            <input
+                                id="distributorName"
+                                type="text"
+                                value={distributorName}
+                                onChange={(e) => setDistributorName(e.target.value)}
+                                className="w-full p-2 border rounded"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="companyName" className="block mb-1 text-sm font-medium">Company Name</label>
+                            <input
+                                id="companyName"
+                                type="text"
+                                value={companyName}
+                                onChange={(e) => setCompanyName(e.target.value)}
+                                className="w-full p-2 border rounded"
+                                required
+                            />
+                        </div>
+                        {linkType === 'generic' && (
+                            <div>
+                                <label htmlFor="orderNumber" className="block mb-1 text-sm font-medium">Order Number</label>
+                                <input
+                                    id="orderNumber"
+                                    type="text"
+                                    value={orderNumber}
+                                    onChange={(e) => setOrderNumber(e.target.value)}
+                                    className="w-full p-2 border rounded"
+                                    required
+                                />
+                            </div>
+                        )}
+                        <button type="submit" className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            Register
+                        </button>
+                    </form>
                 </div>
-                <div>
-                    <label htmlFor="password" className="block mb-1 text-sm font-medium">Password</label>
-                    <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-                <div>
-                    <label htmlFor="distributorName" className="block mb-1 text-sm font-medium">Distributor Name</label>
-                    <input
-                        id="distributorName"
-                        type="text"
-                        value={distributorName}
-                        onChange={(e) => setDistributorName(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-                <div>
-                    <label htmlFor="companyName" className="block mb-1 text-sm font-medium">Company Name</label>
-                    <input
-                        id="companyName"
-                        type="text"
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-                {linkType === 'generic' && (
-                    <div>
-                        <label htmlFor="orderNumber" className="block mb-1 text-sm font-medium">Order Number</label>
-                        <input
-                            id="orderNumber"
-                            type="text"
-                            value={orderNumber}
-                            onChange={(e) => setOrderNumber(e.target.value)}
-                            className="w-full p-2 border rounded"
-                            required
-                        />
-                    </div>
-                )}
-                <button type="submit" className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600">
-                    Register
-                </button>
-            </form>
             </div>
         </div>
     );
