@@ -28,7 +28,7 @@ function Login() {
 
         try {
             const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                { username: email, password },
+                { email, password },
                 {
                     params: { action: 'verifyCredentials' },
                     headers: { 'Content-Type': 'application/json' }
