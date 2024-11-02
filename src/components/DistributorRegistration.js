@@ -25,7 +25,6 @@ const generateRandomDistributorName = () => {
 };
 
 function DistributorRegistration() {
-    const [username, setUsername] = useState('testuser123');
     const [email, setEmail] = useState(generateRandomEmail());
     const [password, setPassword] = useState('TestPassword123!');
     const [distributorName, setDistributorName] = useState(generateRandomDistributorName());
@@ -47,7 +46,7 @@ function DistributorRegistration() {
         setError('');
         try {
             const payload = {
-                username,
+                username: email,
                 email,
                 password,
                 token,
@@ -70,13 +69,21 @@ function DistributorRegistration() {
 
             if (response.data.message === 'Distributor registered successfully') {
                 console.log('Distributor registration successful:', {
-                    username,
+                    email,
                     distributorName,
                     companyName,
                     linkType,
                     orderNumber: linkType === 'generic' ? orderNumber : 'N/A'
                 });
-                navigate('/distributor');
+
+                // Navigate to login with success message
+                navigate('/login', {
+                    state: {
+                        registration: 'success',
+                        username: email,  // Pass username to pre-fill login form
+                        message: 'Registration successful! Please log in with your credentials.'
+                    }
+                });
             } else {
                 console.log("Unexpected response message:", response.data.message);
                 setError('Registration failed. Please try again.');
