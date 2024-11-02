@@ -1,5 +1,7 @@
+// DistributorDashboard.js
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DashboardHeader from './DashboardHeader';
 
 function DistributorDashboard() {
     const navigate = useNavigate();
@@ -12,23 +14,29 @@ function DistributorDashboard() {
     }, [navigate, username]);
 
     if (!username) {
-        return null; // or a loading state
+        return null;
     }
 
     return (
-        <div className="p-8">
-            <h1 className="text-3xl font-bold mb-6">Distributor Dashboard</h1>
-            <p className="mb-4">Welcome, {username}!</p>
-            <p>More features coming soon.</p>
-            <button
-                onClick={() => {
-                    localStorage.removeItem('distributor_username');
-                    navigate('/login');
-                }}
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-                Logout
-            </button>
+        <div className="min-h-screen bg-gray-100">
+            <DashboardHeader
+                title="Distributor Dashboard"
+                centerContent={<p className="text-gray-600">Welcome, {username}!</p>}
+            />
+            <div className="p-8 max-w-6xl mx-auto pt-48">
+                <div className="bg-white rounded-lg shadow-md p-8">
+                    <p className="mb-4">More features coming soon.</p>
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('distributor_username');
+                            navigate('/login');
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                        Logout
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

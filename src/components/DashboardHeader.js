@@ -1,12 +1,11 @@
-
-// components/DashboardHeader.js
 import React from 'react';
 
 const DashboardHeader = ({
                              subtitle = "App Manager",  // Default subtitle
                              title,  // Required title
                              permanentMessage,  // Message object { type: 'success' | 'error', content: string }
-                             logoUrl = "/images/smartyapps-logo.png"  // Default logo path
+                             logoUrl = "/images/smartyapps-logo.png",  // Default logo path
+                             centerContent  // Optional additional content to display in center
                          }) => {
     return (
         <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md">
@@ -25,22 +24,27 @@ const DashboardHeader = ({
                                 <div className="md:ml-4 flex flex-col md:border-l md:pl-4 text-center">
                                     <h2 className="text-lg md:text-xl text-gray-600 font-semibold">{subtitle}</h2>
                                     <h1 className="text-xl md:text-2xl font-bold text-gray-800">{title}</h1>
+                                    {centerContent && (
+                                        <div className="mt-2">{centerContent}</div>
+                                    )}
                                 </div>
                             </div>
                             <div className="hidden md:block" style={{width: '128px'}}></div>
                         </div>
                     </div>
-                    <div className="w-full max-w-2xl mt-1 md:mt-2">
-                        <div
-                            className={`p-2 rounded-lg w-full text-center text-sm min-h-[2rem] md:min-h-[2.5rem] flex items-center justify-center ${
-                                permanentMessage?.content
-                                    ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
-                                    : 'bg-gray-50 text-gray-400'
-                            }`}
-                        >
-                            {permanentMessage?.content || 'No messages'}
+                    {permanentMessage && (
+                        <div className="w-full max-w-2xl mt-1 md:mt-2">
+                            <div
+                                className={`p-2 rounded-lg w-full text-center text-sm min-h-[2rem] md:min-h-[2.5rem] flex items-center justify-center ${
+                                    permanentMessage.content
+                                        ? (permanentMessage.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')
+                                        : 'bg-gray-50 text-gray-400'
+                                }`}
+                            >
+                                {permanentMessage.content || 'No messages'}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

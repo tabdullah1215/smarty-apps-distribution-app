@@ -151,11 +151,18 @@ export default function OwnerDashboard() {
         setOrdersPage(1);
     }, [incomingOrderFilter, incomingDateFilter, incomingStatusFilter]);
 
+    const centerContent = (
+        <div className="text-sm text-gray-600">
+            {pendingDistributors.length} Distributors | {incomingOrders.length} Orders
+        </div>
+    );
+
     return (
         <div className="relative font-roboto bg-gray-200">
             <DashboardHeader
                 title="Owner Dashboard"
                 permanentMessage={permanentMessage}
+                centerContent={centerContent}
             />
             <div className="p-8 max-w-6xl mx-auto pt-48 md:pt-48">
                 <LinkGenerator

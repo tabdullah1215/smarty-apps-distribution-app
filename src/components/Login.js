@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
+import DashboardHeader from './DashboardHeader';
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -51,68 +52,65 @@ function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8">
-            <div className="max-w-md mx-auto">
-                <div className="bg-white rounded-lg shadow-md p-8">
-                    <h1 className="text-3xl font-bold mb-6 text-center">Login</h1>
+        <div className="min-h-screen bg-gray-100">
+            <DashboardHeader
+                title="Login"
+                permanentMessage={
+                    (error || successMessage) && {
+                        type: error ? 'error' : 'success',
+                        content: error || successMessage
+                    }
+                }
+            />
+            <div className="py-8 pt-48">
+                <div className="max-w-md mx-auto">
+                    <div className="bg-white rounded-lg shadow-md p-8">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label
+                                    htmlFor="email"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
+                                    Email
+                                </label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
 
-                    {successMessage && (
-                        <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-md">
-                            {successMessage}
-                        </div>
-                    )}
+                            <div>
+                                <label
+                                    htmlFor="password"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
+                                    Password
+                                </label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
 
-                    {error && (
-                        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
-                            {error}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label
-                                htmlFor="email"
-                                className="block text-sm font-medium text-gray-700 mb-1"
-                            >
-                                Email
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required
+                            <button
+                                type="submit"
+                                className="w-full py-3 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 font-medium disabled:bg-blue-300"
                                 disabled={isLoading}
-                            />
-                        </div>
-
-                        <div>
-                            <label
-                                htmlFor="password"
-                                className="block text-sm font-medium text-gray-700 mb-1"
                             >
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="w-full py-3 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 font-medium disabled:bg-blue-300"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Logging in...' : 'Log In'}
-                        </button>
-                    </form>
+                                {isLoading ? 'Logging in...' : 'Log In'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

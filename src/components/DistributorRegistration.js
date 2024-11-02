@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINT } from '../config';
+import DashboardHeader from './DashboardHeader';
 
 const generateRandomEmail = () => {
     const names = ['john', 'jane', 'bob', 'alice', 'mike', 'sarah', 'chris', 'emma'];
@@ -33,6 +34,7 @@ function DistributorRegistration() {
     const [error, setError] = useState('');
     const { linkType, token } = useParams();
     const navigate = useNavigate();
+    const [message, setMessage] = useState(null);
 
     useEffect(() => {
         if (linkType === 'generic') {
@@ -99,11 +101,17 @@ function DistributorRegistration() {
     };
 
     return (
-        <div className="p-8 max-w-md mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Distributor Registration</h1>
-            <p className="mb-4">Registration Type: {linkType}</p>
-            {error && <p className="text-red-500 mb-4">{error}</p>}
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="min-h-screen bg-gray-100">
+            <DashboardHeader
+                title="Distributor Registration"
+                subtitle={`Registration Type: ${linkType}`}
+                permanentMessage={message && {
+                    type: error ? 'error' : 'success',
+                    content: error || message
+                }}
+            />
+            <div className="p-8 max-w-md mx-auto pt-48">
+                <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label htmlFor="email" className="block mb-1 text-sm font-medium">Email</label>
                     <input
@@ -165,6 +173,7 @@ function DistributorRegistration() {
                     Register
                 </button>
             </form>
+            </div>
         </div>
     );
 }
