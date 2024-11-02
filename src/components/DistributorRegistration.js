@@ -105,17 +105,6 @@ function DistributorRegistration() {
             {error && <p className="text-red-500 mb-4">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label htmlFor="username" className="block mb-1 text-sm font-medium">Username</label>
-                    <input
-                        id="username"
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-                <div>
                     <label htmlFor="email" className="block mb-1 text-sm font-medium">Email</label>
                     <input
                         id="email"
