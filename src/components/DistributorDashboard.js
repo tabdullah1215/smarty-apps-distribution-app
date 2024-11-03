@@ -19,7 +19,7 @@ function DistributorDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-200">
             <DashboardHeader
                 title="Distributor Dashboard"
                 centerContent={<p className="text-gray-600">Welcome, {username}!</p>}

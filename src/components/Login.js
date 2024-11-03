@@ -52,12 +52,12 @@ function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-200">
             <DashboardHeader
                 title="Login"
                 permanentMessage={permanentMessage}  // Updated to use permanentMessage state
             />
-            <div className="pt-60">
+            <div className="p-8 max-w-md mx-auto pt-60">
                 <div className="max-w-md mx-auto">
                     <div className="bg-white rounded-lg shadow-md p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">

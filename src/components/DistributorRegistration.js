@@ -97,7 +97,7 @@ function DistributorRegistration() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-200">
             <DashboardHeader
                 title="Distributor Registration"
                 subtitle={`Registration Type: ${linkType}`}
