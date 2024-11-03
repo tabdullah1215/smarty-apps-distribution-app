@@ -57,8 +57,8 @@ function Login() {
                 title="Login"
                 permanentMessage={permanentMessage}  // Updated to use permanentMessage state
             />
-            <div className="p-8 max-w-md mx-auto pt-60">
-                <div className="max-w-md mx-auto">
+            <div className="pt-60">
+                <div className="max-w-md mx-auto px-8 md:px-0">
                     <div className="bg-white rounded-lg shadow-md p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
