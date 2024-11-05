@@ -35,10 +35,12 @@ const PWAGateway = () => {
         }
     };
 
-    // Get the manifest URL dynamically
-    const manifestUrl = document.querySelector('link[rel="manifest"]')?.href;
-    // Extract the start_url from the manifest if available
-    const appUrl = manifestUrl ? '/' : window.location.origin;
+    const handleLaunchApp = () => {
+        // Simpler launch method that works with most PWAs
+        // It uses the start_url from your manifest
+        const startUrl = window.location.origin;
+        window.location.replace(`${startUrl}/?launch=pwa&t=${Date.now()}`);
+    };
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -82,9 +84,9 @@ const PWAGateway = () => {
                         <p className="text-gray-600 mb-2">
                             Please use the installed app on your device.
                         </p>
-                        <a
-                            href={appUrl}
-                            className="inline-block w-full py-3 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 mb-6 flex items-center justify-center"
+                        <button
+                            onClick={handleLaunchApp}
+                            className="w-full py-3 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 mb-6 flex items-center justify-center"
                         >
                             <svg
                                 className="w-5 h-5 mr-2"
@@ -97,7 +99,7 @@ const PWAGateway = () => {
                                 />
                             </svg>
                             Launch App
-                        </a>
+                        </button>
                         <div className="text-sm text-gray-500">
                             <p>If you can't find the app:</p>
                             <ul className="list-disc list-inside mt-2">
