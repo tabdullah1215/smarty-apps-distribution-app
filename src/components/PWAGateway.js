@@ -5,54 +5,47 @@ const PWAGateway = () => {
     const [appState, setAppState] = useState('checking');
     const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-    const checkAppState = () => {
-        // Check if currently running in standalone mode
-        const isCurrentlyInstalled =
+    const checkIsInstalled = () => {
+        return (
             window.matchMedia('(display-mode: standalone)').matches ||
-            window.navigator.standalone || // iOS
-            document.referrer.includes('android-app://');
-
-        if (isCurrentlyInstalled) {
-            setAppState('installed');
-            localStorage.setItem('appInstalled', 'true');
-            return;
-        }
-
-        // If not in standalone mode but we have the install prompt, it's installable
-        if (deferredPrompt) {
-            setAppState('installable');
-            localStorage.removeItem('appInstalled');
-            return;
-        }
-
-        // If not in standalone mode and no install prompt, check if it was previously installed
-        if (localStorage.getItem('appInstalled') === 'true') {
-            // If it was installed but we're not in standalone mode now, it might have been uninstalled
-            setAppState('installable');
-            localStorage.removeItem('appInstalled');
-            return;
-        }
-
-        setAppState('installable');
+            window.navigator.standalone ||  // iOS
+            document.referrer.includes('android-app://') ||
+            window.navigator.userAgent.toLowerCase().includes('wv') // Android WebView
+        );
     };
 
     useEffect(() => {
-        // Initial check
-        checkAppState();
+        const checkAppState = () => {
+            // First check if it's actually installed and running as PWA
+            if (checkIsInstalled()) {
+                setAppState('installed');
+                return;
+            }
 
-        // Check when the page becomes visible
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                checkAppState();
+            // If we previously recorded it as installed, trust that state
+            // This helps prevent the install button showing up after refresh
+            if (localStorage.getItem('appInstalled') === 'true') {
+                setAppState('installed');
+                return;
+            }
+
+            // Only show installable if we have neither installation nor recorded state
+            if (deferredPrompt) {
+                setAppState('installable');
             }
         };
+
+        // Check immediately
+        checkAppState();
 
         // Handle install prompt
         const handleInstallPrompt = (e) => {
             e.preventDefault();
-            setDeferredPrompt(e);
-            setAppState('installable');
-            localStorage.removeItem('appInstalled');
+            // Only update state if we're not already installed
+            if (localStorage.getItem('appInstalled') !== 'true' && !checkIsInstalled()) {
+                setDeferredPrompt(e);
+                setAppState('installable');
+            }
         };
 
         // Handle successful installation
@@ -68,30 +61,19 @@ const PWAGateway = () => {
             if (e.matches) {
                 setAppState('installed');
                 localStorage.setItem('appInstalled', 'true');
-            } else {
-                // If we exit standalone mode, might mean the app was uninstalled
-                checkAppState();
             }
         };
 
-        // Set up event listeners
-        document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('beforeinstallprompt', handleInstallPrompt);
         window.addEventListener('appinstalled', handleAppInstalled);
         mediaQuery.addListener(handleDisplayModeChange);
 
-        // Check periodically for changes in installation status
-        const intervalCheck = setInterval(checkAppState, 5000);
-
-        // Cleanup
         return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
             window.removeEventListener('appinstalled', handleAppInstalled);
             mediaQuery.removeListener(handleDisplayModeChange);
-            clearInterval(intervalCheck);
         };
-    }, [deferredPrompt]); // Added deferredPrompt to dependency array
+    }, [deferredPrompt]);
 
     const handleInstall = async () => {
         if (!deferredPrompt) return;
@@ -108,13 +90,9 @@ const PWAGateway = () => {
             setDeferredPrompt(null);
         } catch (error) {
             console.error('Error showing install prompt:', error);
-            // If there's an error, reset to installable state
-            setAppState('installable');
-            localStorage.removeItem('appInstalled');
         }
     };
 
-    // Rest of your render logic remains the same
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
