@@ -37,19 +37,22 @@
       "name": "Login",
       "short_name": "Login",
       "description": "Login to your distributor account",
-      "url": "/login"
+      "url": "/login",
+      "icons": [{ "src": "/shortcuts/icon-96x96", "sizes": "96x96" }]
     },
     {
       "name": "Register Distributor",
       "short_name": "Register",
       "description": "Register as a new distributor",
-      "url": "/register"
+      "url": "/register",
+      "icons": [{ "src": "/shortcuts/icon-96x96", "sizes": "96x96" }]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "description": "Go to your dashboard",
-      "url": "/distributor"
+      "url": "/distributor",
+      "icons": [{ "src": "/shortcuts/icon-96x96", "sizes": "96x96" }]
     }
   ],
   "screenshots": [
