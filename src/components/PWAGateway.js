@@ -6,32 +6,37 @@ const PWAGateway = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     const checkIsInstalled = () => {
-        return (
+        const isStandalone =
             window.matchMedia('(display-mode: standalone)').matches ||
             window.navigator.standalone ||  // iOS
             document.referrer.includes('android-app://') ||
-            window.navigator.userAgent.toLowerCase().includes('wv') // Android WebView
-        );
+            window.navigator.userAgent.toLowerCase().includes('wv'); // Android WebView
+
+        // If not in standalone mode and we have an install prompt,
+        // the app was likely uninstalled
+        if (!isStandalone && deferredPrompt) {
+            localStorage.removeItem('appInstalled');
+            return false;
+        }
+
+        return isStandalone;
     };
 
     useEffect(() => {
         const checkAppState = () => {
-            // First check if it's actually installed and running as PWA
-            if (checkIsInstalled()) {
-                setAppState('installed');
-                return;
-            }
+            const isInstalled = checkIsInstalled();
 
-            // If we previously recorded it as installed, trust that state
-            // This helps prevent the install button showing up after refresh
-            if (localStorage.getItem('appInstalled') === 'true') {
+            if (isInstalled) {
                 setAppState('installed');
-                return;
-            }
-
-            // Only show installable if we have neither installation nor recorded state
-            if (deferredPrompt) {
+                localStorage.setItem('appInstalled', 'true');
+            } else if (deferredPrompt) {
+                // If we have an install prompt, we can install
                 setAppState('installable');
+                localStorage.removeItem('appInstalled');
+            } else if (!isInstalled && localStorage.getItem('appInstalled')) {
+                // If we're not installed but localStorage thinks we are,
+                // wait for potential install prompt
+                setAppState('checking');
             }
         };
 
@@ -41,10 +46,12 @@ const PWAGateway = () => {
         // Handle install prompt
         const handleInstallPrompt = (e) => {
             e.preventDefault();
-            // Only update state if we're not already installed
-            if (localStorage.getItem('appInstalled') !== 'true' && !checkIsInstalled()) {
-                setDeferredPrompt(e);
+            setDeferredPrompt(e);
+            // If we get an install prompt and we're not in standalone mode,
+            // we should show the install button
+            if (!checkIsInstalled()) {
                 setAppState('installable');
+                localStorage.removeItem('appInstalled');
             }
         };
 
@@ -61,19 +68,30 @@ const PWAGateway = () => {
             if (e.matches) {
                 setAppState('installed');
                 localStorage.setItem('appInstalled', 'true');
+            } else {
+                // When exiting standalone mode, check if we can reinstall
+                checkAppState();
             }
         };
 
+        // Set up event listeners
         window.addEventListener('beforeinstallprompt', handleInstallPrompt);
         window.addEventListener('appinstalled', handleAppInstalled);
         mediaQuery.addListener(handleDisplayModeChange);
+
+        // Check status when page becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                checkAppState();
+            }
+        });
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
             window.removeEventListener('appinstalled', handleAppInstalled);
             mediaQuery.removeListener(handleDisplayModeChange);
         };
-    }, [deferredPrompt]);
+    }, [deferredPrompt]); // Include deferredPrompt in dependencies
 
     const handleInstall = async () => {
         if (!deferredPrompt) return;
@@ -90,6 +108,9 @@ const PWAGateway = () => {
             setDeferredPrompt(null);
         } catch (error) {
             console.error('Error showing install prompt:', error);
+            // Reset state on error
+            setAppState('installable');
+            localStorage.removeItem('appInstalled');
         }
     };
 
