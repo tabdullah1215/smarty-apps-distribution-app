@@ -2,115 +2,41 @@
 import React, { useEffect, useState } from 'react';
 
 const PWAGateway = () => {
-    const [appState, setAppState] = useState('checking');
+    const [showInstalledView, setShowInstalledView] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-    const checkIsInstalled = () => {
-        const isStandalone =
-            window.matchMedia('(display-mode: standalone)').matches ||
-            window.navigator.standalone ||  // iOS
-            document.referrer.includes('android-app://') ||
-            window.navigator.userAgent.toLowerCase().includes('wv'); // Android WebView
-
-        // If not in standalone mode and we have an install prompt,
-        // the app was likely uninstalled
-        if (!isStandalone && deferredPrompt) {
-            localStorage.removeItem('appInstalled');
-            return false;
-        }
-
-        return isStandalone;
-    };
-
     useEffect(() => {
-        const checkAppState = () => {
-            const isInstalled = checkIsInstalled();
-
-            if (isInstalled) {
-                setAppState('installed');
-                localStorage.setItem('appInstalled', 'true');
-            } else if (deferredPrompt) {
-                // If we have an install prompt, we can install
-                setAppState('installable');
-                localStorage.removeItem('appInstalled');
-            } else if (!isInstalled && localStorage.getItem('appInstalled')) {
-                // If we're not installed but localStorage thinks we are,
-                // wait for potential install prompt
-                setAppState('checking');
-            }
-        };
-
-        // Check immediately
-        checkAppState();
-
         // Handle install prompt
         const handleInstallPrompt = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            // If we get an install prompt and we're not in standalone mode,
-            // we should show the install button
-            if (!checkIsInstalled()) {
-                setAppState('installable');
-                localStorage.removeItem('appInstalled');
-            }
         };
 
-        // Handle successful installation
-        const handleAppInstalled = () => {
-            setAppState('installed');
-            localStorage.setItem('appInstalled', 'true');
-            setDeferredPrompt(null);
-        };
-
-        // Listen for display mode changes
-        const mediaQuery = window.matchMedia('(display-mode: standalone)');
-        const handleDisplayModeChange = (e) => {
-            if (e.matches) {
-                setAppState('installed');
-                localStorage.setItem('appInstalled', 'true');
-            } else {
-                // When exiting standalone mode, check if we can reinstall
-                checkAppState();
-            }
-        };
-
-        // Set up event listeners
         window.addEventListener('beforeinstallprompt', handleInstallPrompt);
-        window.addEventListener('appinstalled', handleAppInstalled);
-        mediaQuery.addListener(handleDisplayModeChange);
-
-        // Check status when page becomes visible
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                checkAppState();
-            }
-        });
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
-            window.removeEventListener('appinstalled', handleAppInstalled);
-            mediaQuery.removeListener(handleDisplayModeChange);
         };
-    }, [deferredPrompt]); // Include deferredPrompt in dependencies
+    }, []);
 
     const handleInstall = async () => {
-        if (!deferredPrompt) return;
+        if (!deferredPrompt) {
+            // If no install prompt, just show the installed view
+            // (this covers the case where app is already installed)
+            setShowInstalledView(true);
+            return;
+        }
 
         try {
             await deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-
-            if (outcome === 'accepted') {
-                setAppState('installed');
-                localStorage.setItem('appInstalled', 'true');
-            }
-
+            // Regardless of the outcome, show the installed view
+            setShowInstalledView(true);
             setDeferredPrompt(null);
         } catch (error) {
             console.error('Error showing install prompt:', error);
-            // Reset state on error
-            setAppState('installable');
-            localStorage.removeItem('appInstalled');
+            // Even on error, show installed view
+            setShowInstalledView(true);
         }
     };
 
@@ -123,13 +49,7 @@ const PWAGateway = () => {
                     className="h-24 mx-auto mb-6"
                 />
 
-                {appState === 'checking' && (
-                    <div className="animate-pulse">
-                        <p className="text-gray-600">Checking app status...</p>
-                    </div>
-                )}
-
-                {appState === 'installable' && (
+                {!showInstalledView ? (
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800 mb-4">
                             Welcome to SmartyApps.AI
@@ -154,9 +74,7 @@ const PWAGateway = () => {
                             Install App
                         </button>
                     </div>
-                )}
-
-                {appState === 'installed' && (
+                ) : (
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800 mb-4">
                             App Installed
