@@ -18,8 +18,36 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "description": "SmartyApps.AI Distributor Management",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "background_color": "#ffffff",
   "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "prefer_related_applications": false,
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Login",
+      "short_name": "Login",
+      "description": "Login to your distributor account",
+      "url": "/login",
+      "icons": [{ "src": "logo192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Register Distributor",
+      "short_name": "Register",
+      "description": "Register as a new distributor",
+      "url": "/register",
+      "icons": [{ "src": "logo192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Go to your dashboard",
+      "url": "/distributor",
+      "icons": [{ "src": "logo192.png", "sizes": "96x96" }]
+    }
+  ]
 }
