@@ -3,19 +3,24 @@
   "name": "Smarty Apps Distribution",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/icons/icon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
     },
     {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "src": "/icons/icon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
     },
     {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "src": "/icons/icon-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png"
     }
   ],
   "description": "SmartyApps.AI Distributor Management",
@@ -32,22 +37,33 @@
       "name": "Login",
       "short_name": "Login",
       "description": "Login to your distributor account",
-      "url": "/login",
-      "icons": [{ "src": "logo192.png", "sizes": "96x96" }]
+      "url": "/login"
     },
     {
       "name": "Register Distributor",
       "short_name": "Register",
       "description": "Register as a new distributor",
-      "url": "/register",
-      "icons": [{ "src": "logo192.png", "sizes": "96x96" }]
+      "url": "/register"
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "description": "Go to your dashboard",
-      "url": "/distributor",
-      "icons": [{ "src": "logo192.png", "sizes": "96x96" }]
+      "url": "/distributor"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile-screenshot1.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }
