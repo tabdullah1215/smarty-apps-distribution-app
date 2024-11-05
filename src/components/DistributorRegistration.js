@@ -27,7 +27,7 @@ const generateRandomDistributorName = () => {
 
 function DistributorRegistration() {
     const [email, setEmail] = useState(generateRandomEmail());
-    const [password, setPassword] = useState('TestPassword123!');
+    const [password, setPassword] = useState('abc123');
     const [distributorName, setDistributorName] = useState(generateRandomDistributorName());
     const [companyName, setCompanyName] = useState('Test Company Ltd.');
     const [orderNumber, setOrderNumber] = useState('');

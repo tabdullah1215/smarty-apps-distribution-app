@@ -10,7 +10,7 @@ const DashboardHeader = ({
                              centerContent  // Optional additional content to display in center
                          }) => {
     return (
-        <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md min-h-[160px] md:min-h-[200px]">
+        <div className="fixed top-0 left-0 right-0 bg-white z-10 shadow-md min-h-[250px] md:min-h-[200px]">
             <div className="max-w-6xl mx-auto px-4 py-3">
                 <div className="flex flex-col items-start md:items-center">
                     <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
