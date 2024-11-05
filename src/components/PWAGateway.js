@@ -6,7 +6,6 @@ const PWAGateway = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
 
     useEffect(() => {
-        // Handle install prompt
         const handleInstallPrompt = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
@@ -21,8 +20,6 @@ const PWAGateway = () => {
 
     const handleInstall = async () => {
         if (!deferredPrompt) {
-            // If no install prompt, just show the installed view
-            // (this covers the case where app is already installed)
             setShowInstalledView(true);
             return;
         }
@@ -30,15 +27,18 @@ const PWAGateway = () => {
         try {
             await deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            // Regardless of the outcome, show the installed view
             setShowInstalledView(true);
             setDeferredPrompt(null);
         } catch (error) {
             console.error('Error showing install prompt:', error);
-            // Even on error, show installed view
             setShowInstalledView(true);
         }
     };
+
+    // Get the manifest URL dynamically
+    const manifestUrl = document.querySelector('link[rel="manifest"]')?.href;
+    // Extract the start_url from the manifest if available
+    const appUrl = manifestUrl ? '/' : window.location.origin;
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -82,9 +82,22 @@ const PWAGateway = () => {
                         <p className="text-gray-600 mb-2">
                             Please use the installed app on your device.
                         </p>
-                        <p className="text-gray-600 mb-6">
-                            You can find the app icon on your home screen or app drawer.
-                        </p>
+                        <a
+                            href={appUrl}
+                            className="inline-block w-full py-3 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 mb-6 flex items-center justify-center"
+                        >
+                            <svg
+                                className="w-5 h-5 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                                />
+                            </svg>
+                            Launch App
+                        </a>
                         <div className="text-sm text-gray-500">
                             <p>If you can't find the app:</p>
                             <ul className="list-disc list-inside mt-2">
