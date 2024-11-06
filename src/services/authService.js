@@ -1,6 +1,6 @@
 // src/services/authService.js
 import axios from 'axios';
-import jwtDecode from 'jwt-decode';  // You'll need to install this: npm install jwt-decode
+import { jwtDecode } from 'jwt-decode';  // You'll need to install this: npm install jwt-decode
 
 const TOKEN_KEY = 'auth_token';
 
