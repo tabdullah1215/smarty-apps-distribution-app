@@ -1,38 +1,34 @@
-// DistributorDashboard.js
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardHeader from './DashboardHeader';
+import authService from '../services/authService';
 
 function DistributorDashboard() {
     const navigate = useNavigate();
-    const username = localStorage.getItem('distributor_username');
-    const [permanentMessage] = useState({ type: '', content: '' });
+    const userInfo = authService.getUserInfo();
 
-    useEffect(() => {
-        if (!username) {
-            navigate('/login');
-        }
-    }, [navigate, username]);
-
-    if (!username) {
-        return null;
-    }
+    const handleLogout = () => {
+        authService.removeToken();
+        localStorage.removeItem('distributor_username');
+        navigate('/login');
+    };
 
     return (
         <div className="min-h-screen bg-gray-200">
             <DashboardHeader
                 title="Distributor Dashboard"
-                centerContent={<p className="text-gray-600">Welcome, {username}!</p>}
-                permanentMessage={permanentMessage}  // Added permanentMessage prop
+                centerContent={
+                    <p className="text-gray-600">
+                        Welcome, {userInfo?.email || 'User'}!
+                    </p>
+                }
+                permanentMessage={{ type: '', content: '' }}
             />
             <div className="p-8 max-w-6xl mx-auto pt-48">
                 <div className="bg-white rounded-lg shadow-md p-8">
                     <p className="mb-4">More features coming soon.</p>
                     <button
-                        onClick={() => {
-                            localStorage.removeItem('distributor_username');
-                            navigate('/login');
-                        }}
+                        onClick={handleLogout}
                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                     >
                         Logout

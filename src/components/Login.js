@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import DashboardHeader from './DashboardHeader';
+import authService from '../services/authService';
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -13,16 +14,20 @@ function Login() {
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
 
     useEffect(() => {
+        // Clear any existing auth on login page load
+        authService.removeToken();
+
+        // Handle registration success message
         if (location.state?.registration === 'success') {
             setPermanentMessage({ type: 'success', content: location.state.message });
-            setEmail(location.state.email || '');  // Updated to use email
+            setEmail(location.state.email || '');
             window.history.replaceState({}, document.title);
         }
     }, [location]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setPermanentMessage({ type: '', content: '' });  // Reset message
+        setPermanentMessage({ type: '', content: '' });
         setIsLoading(true);
 
         try {
@@ -34,18 +39,30 @@ function Login() {
                 }
             );
 
-            if (response.data.verified) {
+            if (response.data.token) {
+                // Store the JWT token
+                authService.setToken(response.data.token);
                 setPermanentMessage({ type: 'success', content: 'Login successful!' });
-                localStorage.setItem('distributor_username', email);
-                navigate('/distributor');
+
+                // Get user info from token
+                const userInfo = authService.getUserInfo();
+                if (userInfo) {
+                    localStorage.setItem('distributor_username', userInfo.email);
+                }
+
+                // Navigate based on user role
+                if (userInfo.role === 'Distributor') {
+                    navigate('/distributor');
+                } else {
+                    navigate('/');  // Default to owner dashboard
+                }
             } else {
-                const errorMsg = 'Invalid email or password';
-                setPermanentMessage({ type: 'error', content: errorMsg });
+                setPermanentMessage({ type: 'error', content: 'Invalid credentials' });
             }
         } catch (error) {
             console.error('Login error:', error);
             const errorMsg = error.response?.data?.message || 'Failed to login. Please try again.';
-            setPermanentMessage({ type: 'error', content: errorMsg });  // Add error message
+            setPermanentMessage({ type: 'error', content: errorMsg });
         } finally {
             setIsLoading(false);
         }
@@ -55,7 +72,7 @@ function Login() {
         <div className="min-h-screen bg-gray-200">
             <DashboardHeader
                 title="Login"
-                permanentMessage={permanentMessage}  // Updated to use permanentMessage state
+                permanentMessage={permanentMessage}
             />
             <div className="pt-60">
                 <div className="max-w-md mx-auto px-8 md:px-0">
