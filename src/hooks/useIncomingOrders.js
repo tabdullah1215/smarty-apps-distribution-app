@@ -1,7 +1,7 @@
-// hooks/useIncomingOrders.js
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
+import authService from '../services/authService';
 
 export const useIncomingOrders = (setPermanentMessage) => {
     const [incomingOrders, setIncomingOrders] = useState([]);
@@ -11,12 +11,16 @@ export const useIncomingOrders = (setPermanentMessage) => {
         const { orderFilter = '', dateFilter = '', statusFilter = '' } = params;
         setIsLoading(true);
         try {
+            const token = authService.getToken();  // Get token consistently from authService
+
             const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
                 params: {
                     action: 'getIncomingOrders',
                     orderFilter,
                     dateFilter,
-                    statusFilter
+                    statusFilter},
+                headers: {
+                    'Authorization': `Bearer ${token}`  // Add Authorization header
                 }
             });
             setIncomingOrders(response.data);

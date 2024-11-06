@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
+import authService from '../services/authService';
 
 export const usePendingDistributors = (setPermanentMessage) => {
     const [pendingDistributors, setPendingDistributors] = useState([]);
@@ -17,6 +18,8 @@ export const usePendingDistributors = (setPermanentMessage) => {
                                             } = {}) => {
         setIsLoading(true);
         try {
+            const token = authService.getToken();  // Get token consistently from authService
+
             const response = await axios.get(`${API_ENDPOINT}/get-distributors`, {
                 params: {
                     action: 'getDistributors',
@@ -25,6 +28,9 @@ export const usePendingDistributors = (setPermanentMessage) => {
                     orderFilter,
                     statusFilter,
                     linkTypeFilter
+                },
+                headers: {
+                    'Authorization': `Bearer ${token}`  // Add Authorization header
                 }
             });
             setPendingDistributors(response.data);
