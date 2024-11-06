@@ -63,7 +63,9 @@ function App() {
                 <Route
                     path="/"
                     element={
+                        <ProtectedRoute>
                             <OwnerDashboard />
+                        </ProtectedRoute>
                     }
                 />
                 {/* Catch-all redirect to login */}
