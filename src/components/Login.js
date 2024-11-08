@@ -56,13 +56,79 @@ function Login() {
                 } else {
                     navigate('/');  // Default to owner dashboard
                 }
-            } else {
-                setPermanentMessage({ type: 'error', content: 'Invalid credentials' });
             }
         } catch (error) {
             console.error('Login error:', error);
+            const errorCode = error.response?.data?.code;
             const errorMsg = error.response?.data?.message || 'Failed to login. Please try again.';
-            setPermanentMessage({ type: 'error', content: errorMsg });
+
+            switch (errorCode) {
+                case 'INVALID_CREDENTIALS':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Invalid email or password'
+                    });
+                    break;
+
+                case 'ACCOUNT_INACTIVE':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Your account is not active. Please contact support.'
+                    });
+                    break;
+
+                case 'MISSING_CREDENTIALS':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Please enter both email and password.'
+                    });
+                    break;
+
+                case 'INVALID_TOKEN':
+                case 'TOKEN_EXPIRED':
+                    // Clear any existing auth and redirect to login
+                    authService.removeToken();
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Your session has expired. Please log in again.'
+                    });
+                    break;
+
+                case 'RATE_LIMIT_EXCEEDED':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Too many login attempts. Please try again later.'
+                    });
+                    break;
+
+                case 'VALIDATION_ERROR':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Please check your email format and password length.'
+                    });
+                    break;
+
+                case 'RESOURCE_NOT_FOUND':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Account not found. Please check your email or register.'
+                    });
+                    break;
+
+                case 'CONDITION_FAILED':
+                case 'TRANSACTION_CANCELED':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Login failed due to a database error. Please try again.'
+                    });
+                    break;
+
+                default:
+                    setPermanentMessage({
+                        type: 'error',
+                        content: `${errorMsg} (Code: ${errorCode || 'UNKNOWN'})`
+                    });
+            }
         } finally {
             setIsLoading(false);
         }
