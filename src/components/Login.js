@@ -123,10 +123,32 @@ function Login() {
                     });
                     break;
 
+                case 'DATABASE_ERROR':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Unable to access user information. Please try again later.'
+                    });
+                    break;
+
+                case 'DATA_INTEGRITY_ERROR':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Account data issue detected. Please contact support.'
+                    });
+                    break;
+
+                case 'AWS_SERVICE_ERROR':
+                    setPermanentMessage({
+                        type: 'error',
+                        content: 'Service temporarily unavailable. Please try again later.'
+                    });
+                    break;
+
+
                 default:
                     setPermanentMessage({
                         type: 'error',
-                        content: `${errorMsg} (Code: ${errorCode || 'UNKNOWN'})`
+                        content: `${errorMsg} (Code: ${errorCode || 'INTERNAL_SERVER_ERROR'})`
                     });
             }
         } finally {
