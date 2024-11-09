@@ -27,11 +27,12 @@ const DashboardHeader = ({
             <div className="max-w-6xl mx-auto px-4 py-3">
                 <div className="flex flex-col items-start md:items-center">
                     <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
+                        {/* Main content container */}
                         <div className="flex flex-col md:flex-row w-full md:items-center">
                             {/* Mobile Logo and Logout Container */}
                             <div className="w-full md:w-auto flex items-center justify-between md:justify-start mb-1 md:mb-0">
                                 <div className="w-20 md:w-0"></div> {/* Spacer for centering logo (mobile only) */}
-                                <div className="flex justify-center md:justify-start">
+                                <div className="flex justify-center">
                                     <img
                                         src={logoUrl}
                                         alt="SmartyApps.AI Logo"
@@ -50,8 +51,9 @@ const DashboardHeader = ({
                                 </div>
                             </div>
 
-                            <div className="flex-grow flex justify-center">
-                                <div className="flex flex-col md:border-l md:ml-4 md:pl-4 text-center">
+                            {/* Center content area */}
+                            <div className="flex-grow flex justify-center md:px-4">
+                                <div className="flex flex-col text-center">
                                     <h2 className="text-lg md:text-xl text-gray-600 font-semibold">{subtitle}</h2>
                                     <h1 className="text-xl md:text-2xl font-bold text-gray-800">{title}</h1>
                                     {centerContent && (
@@ -59,6 +61,8 @@ const DashboardHeader = ({
                                     )}
                                 </div>
                             </div>
+
+                            {/* Desktop logout button */}
                             <div className="hidden md:flex items-center justify-end" style={{width: '128px'}}>
                                 {!isAuthPage && (
                                     <button
@@ -71,6 +75,8 @@ const DashboardHeader = ({
                             </div>
                         </div>
                     </div>
+
+                    {/* Permanent message */}
                     <div className="w-full md:flex-grow">
                         {permanentMessage && (
                             <div className="max-w-2xl mx-auto mt-1 md:mt-2">
