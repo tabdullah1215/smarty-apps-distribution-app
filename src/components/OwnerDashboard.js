@@ -111,7 +111,7 @@ export default function OwnerDashboard() {
         setCopiedGeneric,
         generateLink,
         copyToClipboard,
-        isGenerating
+        generatingStates
     } = useGenerateLink(setPermanentMessage);
 
     const { handleDistributorUpdate, isUpdating } = useDistributorUpdate(
@@ -172,7 +172,7 @@ export default function OwnerDashboard() {
                     copied={copiedUnique}
                     generateFn={() => generateLink('unique')}
                     copyFn={() => copyToClipboard(uniqueLink, setCopiedUnique)}
-                    isGenerating={isGenerating}
+                    isGenerating={generatingStates.unique}
                 />
                 <LinkGenerator
                     title="Generic Link"
@@ -180,7 +180,7 @@ export default function OwnerDashboard() {
                     copied={copiedGeneric}
                     generateFn={() => generateLink('generic')}
                     copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
-                    isGenerating={isGenerating}
+                    isGenerating={generatingStates.generic}
                 />
                 <InsertOrder
                     orderNumber={orderNumber}

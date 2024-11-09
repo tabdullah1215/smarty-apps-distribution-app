@@ -9,10 +9,13 @@ export const useGenerateLink = (setPermanentMessage) => {
     const [genericLink, setGenericLink] = useState('');
     const [copiedUnique, setCopiedUnique] = useState(false);
     const [copiedGeneric, setCopiedGeneric] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatingStates, setGeneratingStates] = useState({
+        unique: false,
+        generic: false
+    });
 
     const generateLink = async (linkType) => {
-        setIsGenerating(true);
+        setGeneratingStates(prev => ({ ...prev, [linkType]: true }));
         try {
             const response = await withMinimumDelay(async () => {
                 const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
@@ -42,7 +45,7 @@ export const useGenerateLink = (setPermanentMessage) => {
                 content: 'Failed to generate link. Please try again.'
             });
         } finally {
-            setIsGenerating(false);
+            setGeneratingStates(prev => ({ ...prev, [linkType]: false }));
         }
     };
 
@@ -70,6 +73,6 @@ export const useGenerateLink = (setPermanentMessage) => {
         setCopiedGeneric,
         generateLink,
         copyToClipboard,
-        isGenerating
+        generatingStates
     };
 };
