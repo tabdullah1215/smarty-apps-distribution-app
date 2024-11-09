@@ -8,11 +8,19 @@ import DistributorRegistration from './components/DistributorRegistration';
 import Login from './components/Login';
 import authService from './services/authService';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
+// Protected Route Component with role check
+const ProtectedRoute = ({ children, allowedRole }) => {
+    const userInfo = authService.getUserInfo();
+
     if (!authService.isAuthenticated()) {
         return <Navigate to="/login" replace />;
     }
+
+    // Redirect if user doesn't have the required role
+    if (allowedRole && userInfo?.role !== allowedRole) {
+        return <Navigate to={userInfo?.role === 'Owner' ? '/owner' : '/distributor'} replace />;
+    }
+
     return children;
 };
 
@@ -55,16 +63,28 @@ function App() {
                 <Route
                     path="/distributor"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute allowedRole="Distributor">
                             <DistributorDashboard />
                         </ProtectedRoute>
                     }
                 />
                 <Route
+                    path="/owner"
+                    element={
+                        <ProtectedRoute allowedRole="Owner">
+                            <OwnerDashboard />
+                        </ProtectedRoute>
+                    }
+                />
+                {/* Redirect root to appropriate dashboard based on role */}
+                <Route
                     path="/"
                     element={
                         <ProtectedRoute>
-                            <OwnerDashboard />
+                            {authService.getUserInfo()?.role === 'Owner' ?
+                                <Navigate to="/owner" replace /> :
+                                <Navigate to="/distributor" replace />
+                            }
                         </ProtectedRoute>
                     }
                 />
