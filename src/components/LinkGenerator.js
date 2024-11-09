@@ -1,15 +1,20 @@
 // components/LinkGenerator.js
 import React from 'react';
 import { Copy } from 'lucide-react';
+// components/LinkGenerator.js
+import React from 'react';
+import { Copy, Loader } from 'lucide-react';
 
-const LinkGenerator = ({ title, link, copied, generateFn, copyFn }) => (
+const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating = false }) => (
     <div className="mt-8 bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
         <button
             onClick={generateFn}
-            className="w-full py-4 px-6 text-xl font-semibold bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600 transition duration-300"
+            disabled={isGenerating}
+            className="w-full py-4 px-6 text-xl font-semibold bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 disabled:bg-blue-300 flex items-center justify-center gap-2"
         >
-            Generate {title}
+            {isGenerating && <Loader size={24} className="animate-spin" />}
+            {isGenerating ? `Generating ${title}...` : `Generate ${title}`}
         </button>
         <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
             <p className="text-lg font-semibold mb-4">Distributor Registration Link:</p>

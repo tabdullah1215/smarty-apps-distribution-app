@@ -110,7 +110,8 @@ export default function OwnerDashboard() {
         setCopiedUnique,
         setCopiedGeneric,
         generateLink,
-        copyToClipboard
+        copyToClipboard,
+        isGenerating
     } = useGenerateLink(setPermanentMessage);
 
     const { handleDistributorUpdate, isUpdating } = useDistributorUpdate(
@@ -164,12 +165,14 @@ export default function OwnerDashboard() {
                 permanentMessage={permanentMessage}
                 centerContent={centerContent}
             />
-            <div className="p-8 max-w-6xl mx-auto pt-60 md:pt-42"><LinkGenerator
+            <div className="p-8 max-w-6xl mx-auto pt-60 md:pt-42">
+                <LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
                     copied={copiedUnique}
                     generateFn={() => generateLink('unique')}
                     copyFn={() => copyToClipboard(uniqueLink, setCopiedUnique)}
+                    isGenerating={isGenerating}
                 />
                 <LinkGenerator
                     title="Generic Link"
@@ -177,6 +180,7 @@ export default function OwnerDashboard() {
                     copied={copiedGeneric}
                     generateFn={() => generateLink('generic')}
                     copyFn={() => copyToClipboard(genericLink, setCopiedGeneric)}
+                    isGenerating={isGenerating}
                 />
                 <InsertOrder
                     orderNumber={orderNumber}

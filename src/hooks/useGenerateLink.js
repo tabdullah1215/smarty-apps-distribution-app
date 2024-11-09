@@ -2,47 +2,63 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
+import { withMinimumDelay } from '../utils/withDelay';
 
 export const useGenerateLink = (setPermanentMessage) => {
     const [uniqueLink, setUniqueLink] = useState('');
     const [genericLink, setGenericLink] = useState('');
     const [copiedUnique, setCopiedUnique] = useState(false);
     const [copiedGeneric, setCopiedGeneric] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
 
-    const generateLink = async (type) => {
+    const generateLink = async (linkType) => {
+        setIsGenerating(true);
         try {
-            setPermanentMessage({ type: '', content: '' });
-            const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                { linkType: type },
-                {
-                    params: { action: 'generateToken' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
+            const response = await withMinimumDelay(async () => {
+                const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                    { linkType },
+                    {
+                        params: { action: 'generateToken' },
+                        headers: { 'Content-Type': 'application/json' }
+                    }
+                );
+                return result;
+            });
 
-            if (result.data && result.data.token) {
-                const link = `${window.location.origin}/register/${type}/${result.data.token}`;
-                if (type === 'unique') {
-                    setUniqueLink(link);
+            if (response.data.token) {
+                const registrationLink = `${window.location.origin}/register/${linkType}/${response.data.token}`;
+                if (linkType === 'unique') {
+                    setUniqueLink(registrationLink);
+                    setCopiedUnique(false);
                 } else {
-                    setGenericLink(link);
+                    setGenericLink(registrationLink);
+                    setCopiedGeneric(false);
                 }
-                setPermanentMessage({ type: 'success', content: `${type.charAt(0).toUpperCase() + type.slice(1)} link generated successfully.` });
-            } else {
-                setPermanentMessage({ type: 'error', content: 'Failed to generate link. Please try again.' });
             }
         } catch (error) {
             console.error('Error generating link:', error);
-            setPermanentMessage({ type: 'error', content: 'An error occurred while generating the link. Please try again.' });
+            setPermanentMessage({
+                type: 'error',
+                content: 'Failed to generate link. Please try again.'
+            });
+        } finally {
+            setIsGenerating(false);
         }
     };
 
     const copyToClipboard = (link, setCopied) => {
-        navigator.clipboard.writeText(link).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-            setPermanentMessage({ type: 'success', content: 'Link copied to clipboard.' });
-        });
+        navigator.clipboard.writeText(link)
+            .then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 3000);
+            })
+            .catch(err => {
+                console.error('Failed to copy:', err);
+                setPermanentMessage({
+                    type: 'error',
+                    content: 'Failed to copy to clipboard'
+                });
+            });
     };
 
     return {
@@ -53,6 +69,7 @@ export const useGenerateLink = (setPermanentMessage) => {
         setCopiedUnique,
         setCopiedGeneric,
         generateLink,
-        copyToClipboard
+        copyToClipboard,
+        isGenerating
     };
 };
