@@ -10,7 +10,7 @@ const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating =
             disabled={isGenerating}
             className="w-full py-4 px-6 text-xl font-semibold bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 disabled:bg-blue-300 flex items-center justify-center gap-2"
         >
-            {isGenerating && <Loader size={24} className="animate-spin" />}
+            {isGenerating && <Loader2 size={24} className="animate-spin" />}
             {isGenerating ? `Generating ${title}...` : `Generate ${title}`}
         </button>
         <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
