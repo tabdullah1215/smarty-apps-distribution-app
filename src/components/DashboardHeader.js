@@ -1,6 +1,6 @@
 // DashboardHeader.js
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 
 const DashboardHeader = ({
@@ -11,6 +11,10 @@ const DashboardHeader = ({
                              centerContent  // Optional additional content to display in center
                          }) => {
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Check if we're on login or registration pages
+    const isAuthPage = location.pathname === '/login' || location.pathname.startsWith('/register');
 
     const handleLogout = () => {
         authService.removeToken();
@@ -41,12 +45,14 @@ const DashboardHeader = ({
                                 </div>
                             </div>
                             <div className="hidden md:flex items-center justify-end" style={{width: '128px'}}>
-                                <button
-                                    onClick={handleLogout}
-                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                                >
-                                    Logout
-                                </button>
+                                {!isAuthPage && (
+                                    <button
+                                        onClick={handleLogout}
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                                    >
+                                        Logout
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -66,14 +72,16 @@ const DashboardHeader = ({
                                 </div>
                             )}
                         </div>
-                        <div className="md:hidden w-full flex justify-center">
-                            <button
-                                onClick={handleLogout}
-                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-full max-w-xs"
-                            >
-                                Logout
-                            </button>
-                        </div>
+                        {!isAuthPage && (
+                            <div className="md:hidden w-full flex justify-center">
+                                <button
+                                    onClick={handleLogout}
+                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-full max-w-xs"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
