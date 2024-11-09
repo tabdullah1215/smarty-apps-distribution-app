@@ -17,6 +17,8 @@ export const useGenerateLink = (setPermanentMessage) => {
     const generateLink = async (linkType) => {
         setGeneratingStates(prev => ({ ...prev, [linkType]: true }));
         try {
+            setPermanentMessage({ type: '', content: '' }); // Clear any existing message
+
             const response = await withMinimumDelay(async () => {
                 const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
                     { linkType },
@@ -37,6 +39,10 @@ export const useGenerateLink = (setPermanentMessage) => {
                     setGenericLink(registrationLink);
                     setCopiedGeneric(false);
                 }
+                setPermanentMessage({
+                    type: 'success',
+                    content: `${linkType.charAt(0).toUpperCase() + linkType.slice(1)} link generated successfully`
+                });
             }
         } catch (error) {
             console.error('Error generating link:', error);
@@ -50,10 +56,19 @@ export const useGenerateLink = (setPermanentMessage) => {
     };
 
     const copyToClipboard = (link, setCopied) => {
+        setPermanentMessage({ type: '', content: '' }); // Clear any existing message
+
         navigator.clipboard.writeText(link)
             .then(() => {
                 setCopied(true);
-                setTimeout(() => setCopied(false), 3000);
+                setPermanentMessage({
+                    type: 'success',
+                    content: 'Link copied to clipboard successfully'
+                });
+                setTimeout(() => {
+                    setCopied(false);
+                    setPermanentMessage({ type: '', content: '' });
+                }, 3000);
             })
             .catch(err => {
                 console.error('Failed to copy:', err);
