@@ -1,34 +1,37 @@
+// hooks/useIncomingOrders.js
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
-import authService from '../services/authService';
+import { withMinimumDelay } from '../utils/withDelay';
 
 export const useIncomingOrders = (setPermanentMessage) => {
     const [incomingOrders, setIncomingOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fetchIncomingOrders = async (params = {}) => {
-        const { orderFilter = '', dateFilter = '', statusFilter = '' } = params;
+    const fetchIncomingOrders = async (filters = {}) => {
         setIsLoading(true);
         try {
-            const token = authService.getToken();  // Get token consistently from authService
-
-            const response = await axios.get(`${API_ENDPOINT}/get-incoming-orders`, {
-                params: {
-                    action: 'getIncomingOrders',
-                    orderFilter,
-                    dateFilter,
-                    statusFilter},
-                headers: {
-                    'Authorization': `Bearer ${token}`  // Add Authorization header
-                }
+            const response = await withMinimumDelay(async () => {
+                return await axios.post(
+                    `${API_ENDPOINT}/create-distributor`,
+                    {},
+                    {
+                        params: {
+                            action: 'getIncomingOrders',
+                            ...filters
+                        }
+                    }
+                );
             });
-            setIncomingOrders(response.data);
+
+            if (response.data) {
+                setIncomingOrders(response.data);
+            }
         } catch (error) {
             console.error('Error fetching incoming orders:', error);
-            setPermanentMessage?.({
+            setPermanentMessage({
                 type: 'error',
-                content: 'Failed to fetch incoming orders. Please try again.'
+                content: 'Failed to fetch incoming orders'
             });
         } finally {
             setIsLoading(false);

@@ -1,4 +1,3 @@
-
 // components/OrderGrid.js
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
@@ -15,6 +14,7 @@ const OrderGrid = ({
                        currentPage,
                        itemsPerPage,
                        Pagination,
+                       isLoading
                    }) => {
     return (
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
@@ -22,11 +22,12 @@ const OrderGrid = ({
                 <h2 className="text-xl font-semibold">Incoming Orders</h2>
                 <button
                     onClick={onRefresh}
-                    className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300"
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300 disabled:bg-gray-300"
                     title="Refresh orders"
                 >
-                    <RefreshCw size={16}/>
-                    <span>Refresh</span>
+                    <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/>
+                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
             </div>
             <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -36,6 +37,7 @@ const OrderGrid = ({
                     value={orderFilterImmediate}
                     onChange={onOrderFilterChange}
                     className="p-2 border rounded"
+                    disabled={isLoading}
                 />
                 <div className="w-full relative">
                     <input
@@ -50,6 +52,7 @@ const OrderGrid = ({
                             minWidth: 'auto',
                             maxWidth: '100%'
                         }}
+                        disabled={isLoading}
                         onFocus={(e) => e.target.showPicker()}
                     />
                     {!dateFilter && (
@@ -62,13 +65,14 @@ const OrderGrid = ({
                     value={statusFilter}
                     onChange={onStatusFilterChange}
                     className="p-2 border rounded"
+                    disabled={isLoading}
                 >
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="used">Used</option>
                 </select>
             </div>
-            <div className="h-[440px] overflow-y-auto">
+            <div className="h-[440px] overflow-y-auto relative">
                 <table className="w-full border-collapse border">
                     <thead>
                     <tr className="bg-gray-200">
@@ -77,7 +81,7 @@ const OrderGrid = ({
                         <th className="border p-2">Status</th>
                     </tr>
                     </thead>
-                    <tbody>
+                    <tbody className={isLoading ? 'opacity-50' : ''}>
                     {orders
                         .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                         .map((order, index) => (
