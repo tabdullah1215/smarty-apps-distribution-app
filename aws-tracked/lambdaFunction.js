@@ -18,7 +18,10 @@ const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
     "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0"
 };
 
 // Password hashing utilities
@@ -948,7 +951,13 @@ async function checkExistingOrders(orderNumbers) {
 function createResponse(statusCode, body) {
     return {
         statusCode,
-        headers,
+        headers: {
+            ...headers,
+            // Add only new headers that weren't in the original headers constant
+            'Surrogate-Control': 'no-store',
+            'Clear-Site-Data': '"cache"',
+            'X-Content-Type-Options': 'nosniff'
+        },
         body: JSON.stringify(body),
     };
 }
