@@ -25,11 +25,11 @@ const DistributorGrid = ({
     return (
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Distributors</h2>
+                <h2 className="text-xl font-semibold min-w-[120px]">Distributors</h2>
                 <button
                     onClick={onRefresh}
                     disabled={isLoading}
-                    className="flex items-center justify-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300 disabled:bg-gray-300 w-full sm:w-auto"
+                    className="flex items-center justify-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300 disabled:bg-gray-300 whitespace-nowrap"
                     title="Refresh distributors"
                 >
                     <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/>

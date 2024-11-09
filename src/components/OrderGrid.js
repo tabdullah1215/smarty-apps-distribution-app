@@ -19,11 +19,11 @@ const OrderGrid = ({
     return (
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Incoming Orders</h2>
+                <h2 className="text-xl font-semibold min-w-[120px]">Incoming Orders</h2>
                 <button
                     onClick={onRefresh}
                     disabled={isLoading}
-                    className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300 disabled:bg-gray-300"
+                    className="flex items-center justify-center gap-2 px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition duration-300 disabled:bg-gray-300 whitespace-nowrap"
                     title="Refresh orders"
                 >
                     <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/>
@@ -56,7 +56,8 @@ const OrderGrid = ({
                         onFocus={(e) => e.target.showPicker()}
                     />
                     {!dateFilter && (
-                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                        <span
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
                             Filter by Date
                         </span>
                     )}
