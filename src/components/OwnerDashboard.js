@@ -164,8 +164,7 @@ export default function OwnerDashboard() {
                 permanentMessage={permanentMessage}
                 centerContent={centerContent}
             />
-            <div className="p-8 max-w-6xl mx-auto pt-72 md:pt-54">
-                <LinkGenerator
+            <div className="p-8 max-w-6xl mx-auto pt-60 md:pt-42"><LinkGenerator
                     title="Unique Link"
                     link={uniqueLink}
                     copied={copiedUnique}
