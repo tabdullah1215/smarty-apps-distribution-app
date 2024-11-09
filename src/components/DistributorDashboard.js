@@ -24,7 +24,7 @@ function DistributorDashboard() {
                 }
                 permanentMessage={{ type: '', content: '' }}
             />
-            <div className="p-8 max-w-6xl mx-auto pt-48">
+            <div className="p-8 max-w-6xl mx-auto pt-60">
                 <div className="bg-white rounded-lg shadow-md p-8">
                     <p className="mb-4">More features coming soon.</p>
                     <button

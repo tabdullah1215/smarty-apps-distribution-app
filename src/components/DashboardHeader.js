@@ -23,7 +23,7 @@ const DashboardHeader = ({
                                 />
                             </div>
                             <div className="flex-grow flex justify-center">
-                                <div className="md:ml-4 flex flex-col md:border-l md:pl-4 text-center">
+                                <div className="flex flex-col md:border-l text-center">
                                     <h2 className="text-lg md:text-xl text-gray-600 font-semibold">{subtitle}</h2>
                                     <h1 className="text-xl md:text-2xl font-bold text-gray-800">{title}</h1>
                                     {centerContent && (

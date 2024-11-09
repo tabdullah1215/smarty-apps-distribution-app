@@ -1,12 +1,18 @@
 
-//LAMBDA POST-UPLOAD CSV FEATURE
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, QueryCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+// const bcrypt = require('bcryptjs');
 
 const ddbClient = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
+
+// JWT Configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_EXPIRATION = '24h';
+// const SALT_ROUNDS = 10;
 
 const headers = {
     "Access-Control-Allow-Origin": "*",
@@ -15,23 +21,214 @@ const headers = {
     "Content-Type": "application/json"
 };
 
+// Password hashing utilities
+// async function hashPassword(password) {
+//     return bcrypt.hash(password, SALT_ROUNDS);
+// }
+
+
+// JWT utilities
+function generateToken(user) {
+    return jwt.sign(
+        {
+            sub: user.DistributorId,
+            email: user.Email,
+            role: user.Role,
+            distributorName: user.DistributorName,
+            status: user.Status
+        },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRATION }
+    );
+}
+
+function verifyToken(token) {
+    try {
+        return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+        console.error('Token verification failed:', error);
+        return null;
+    }
+}
+
+async function verifyAuthToken(event) {
+    const authHeader = event.headers.Authorization || event.headers.authorization;
+    if (!authHeader) {
+        return null;
+    }
+    const token = authHeader.replace('Bearer ', '');
+    return verifyToken(token);
+}
+
+async function handleVerifyCredentials(body) {
+    console.log('Processing verify credentials request');
+    try {
+        if (!body.email || !body.password) {
+            return createResponse(400, {
+                code: 'MISSING_CREDENTIALS',
+                message: 'Email and password are required'
+            });
+        }
+
+        let result;
+        try {
+            result = await ddbDocClient.send(new QueryCommand({
+                TableName: 'Distributors',
+                IndexName: 'EmailIndex',
+                KeyConditionExpression: 'Email = :email',
+                ExpressionAttributeValues: {
+                    ':email': body.email
+                }
+            }));
+        } catch (dbError) {
+            console.error('Database query failed:', dbError);
+            return handleLambdaError({
+                name: 'DatabaseQueryError',
+                message: 'Failed to query distributor data',
+                cause: dbError,
+                code: 'DATABASE_ERROR'
+            }, 'handleVerifyCredentials.query');
+        }
+
+        if (!result.Items || result.Items.length === 0) {
+            return createResponse(401, {
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
+        }
+
+        const distributor = result.Items[0];
+
+        // Add specific error if distributor object is malformed
+        if (!distributor.Password) {
+            return handleLambdaError({
+                name: 'DataIntegrityError',
+                message: 'Distributor record is missing required fields'
+            }, 'handleVerifyCredentials.validation');
+        }
+
+        const passwordValid = distributor.Password === body.password;
+
+        if (!passwordValid) {
+            return createResponse(401, {
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
+        }
+
+        if (distributor.Status !== 'active') {
+            return createResponse(403, {
+                code: 'ACCOUNT_INACTIVE',
+                message: 'Account is not active'
+            });
+        }
+
+        try {
+            const token = generateToken(distributor);
+            console.log('Login successful for user:', distributor.Email);
+
+            return createResponse(200, {
+                token,
+                user: {
+                    email: distributor.Email,
+                    distributorName: distributor.DistributorName,
+                    status: distributor.Status,
+                    role: distributor.Role
+                }
+            });
+        } catch (tokenError) {
+            return handleLambdaError({
+                name: 'TokenGenerationError',
+                message: 'Failed to generate authentication token',
+                cause: tokenError
+            }, 'handleVerifyCredentials.token');
+        }
+
+    } catch (error) {
+        return handleLambdaError(error, 'handleVerifyCredentials');
+    }
+}
+async function handleVerifyToken(event) {
+    console.log('Processing verify token request');
+    try {
+        const authHeader = event.headers.Authorization || event.headers.authorization;
+        if (!authHeader) {
+            console.log('No authorization header present');
+            return createResponse(401, {
+                code: 'MISSING_AUTH_HEADER',
+                message: 'No authorization header'
+            });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verifyToken(token);
+
+        if (!decoded) {
+            console.log('Invalid token provided');
+            return createResponse(401, {
+                code: 'INVALID_TOKEN',
+                message: 'Invalid token'
+            });
+        }
+
+        const userResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'Distributors',
+            Key: { DistributorId: decoded.sub }
+        }));
+
+        if (!userResult.Item) {
+            console.log('User no longer exists:', decoded.sub);
+            return createResponse(401, { message: 'User no longer exists' });
+        }
+
+        if (userResult.Item.Status !== 'active') {
+            console.log('User account not active:', decoded.sub);
+            return createResponse(401, { message: 'User account is not active' });
+        }
+
+        console.log('Token successfully verified for user:', decoded.email);
+        return createResponse(200, { valid: true, user: decoded });
+    } catch (error) {
+        console.error('Error verifying token:', error);
+        return createResponse(500, { message: 'Error verifying token', error: error.message });
+    }
+}
+
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
+
+    if (event.httpMethod === 'OPTIONS') {
+        return createResponse(200, {});
+    }
 
     try {
         const action = event.queryStringParameters?.action;
 
         if (!action) {
-            return createResponse(400, { message: 'Missing action parameter' });
+            return createResponse(400, {
+                code: 'MISSING_ACTION',     // Added error code
+                message: 'Missing action parameter'
+            });
         }
 
         let body = {};
         if (event.httpMethod === 'POST') {
-            body = JSON.parse(event.body || '{}');
+            try {
+                body = JSON.parse(event.body || '{}');
+            } catch (error) {
+                return createResponse(400, {
+                    code: 'INVALID_JSON',   // Added error code
+                    message: 'Invalid JSON in request body'
+                });
+            }
             console.log('Parsed body:', JSON.stringify(body, null, 2));
         }
 
         switch (action) {
+            case 'verifyCredentials':
+                return await handleVerifyCredentials(body);
+            case 'verifyToken':
+                return await handleVerifyToken(event);
             case 'insertOrder':
                 return await handleInsertOrder(body);
             case 'generateToken':
@@ -46,67 +243,127 @@ exports.handler = async (event) => {
                 return await handleFetchPendingDistributors(event);
             case 'bulkInsertOrders':
                 return await handleBulkInsertOrders(body);
-            case 'updateDistributor':  // Add this case
+            case 'updateDistributor':
                 return await handleUpdateDistributor(body);
-            case 'verifyCredentials':
-                return await handleVerifyCredentials(body);
             default:
-                return createResponse(400, { message: 'Invalid action' });
+                return createResponse(400, {
+                    code: 'INVALID_ACTION', // Added error code
+                    message: 'Invalid action'
+                });
         }
     } catch (error) {
-        console.error('Error processing request:', error);
-        if (error instanceof SyntaxError) {
-            return createResponse(400, { message: 'Invalid JSON in request body' });
-        }
-        return createResponse(500, { message: 'Internal Server Error', error: error.message });
+        // Use the new error handling utility
+        return handleLambdaError({
+            ...error,
+            code: error.code || 'INTERNAL_SERVER_ERROR',
+            message: error.message || 'An unexpected error occurred'
+        }, 'handler');
     }
 };
 
-async function handleVerifyCredentials(body) {
-    try {
-        if (!body.email || !body.password) {
-            return createResponse(400, { message: 'Email and password are required' });
-        }
+function handleLambdaError(error, context = '') {
+    console.error(`Error in ${context}:`, error);
 
-        // Query the Distributors table using the email
-        const result = await ddbDocClient.send(new QueryCommand({
-            TableName: 'Distributors',
-            IndexName: 'EmailIndex',  // Use the GSI for email-based lookups
-            KeyConditionExpression: 'Email = :email',
-            ExpressionAttributeValues: {
-                ':email': body.email
-            }
-        }));
-
-        if (result.Items && result.Items.length > 0) {
-            const distributor = result.Items[0];
-
-            // Simple password check (pre-JWT)
-            if (distributor.Password === body.password) {
-                return createResponse(200, {
-                    verified: true,
-                    distributorName: distributor.DistributorName,  // Optionally return additional info
-                    status: distributor.Status
-                });
-            }
-        }
-
-        // If no match found or password doesn't match
+    // JWT specific errors
+    if (error.name === 'JsonWebTokenError') {
         return createResponse(401, {
-            verified: false,
-            message: 'Invalid email or password'
-        });
-
-    } catch (error) {
-        console.error('Error verifying credentials:', error);
-        return createResponse(500, {
-            message: 'Error verifying credentials',
-            error: error.message
+            code: 'INVALID_TOKEN',
+            message: 'Invalid or malformed JWT token'
         });
     }
+    if (error.name === 'TokenExpiredError') {
+        return createResponse(401, {
+            code: 'TOKEN_EXPIRED',
+            message: 'JWT token has expired'
+        });
+    }
+    if (error.name === 'TokenGenerationError') {
+        return createResponse(500, {
+            code: 'TOKEN_GENERATION_FAILED',
+            message: 'Failed to generate authentication token'
+        });
+    }
+
+    // Database errors
+    if (error.name === 'DatabaseQueryError') {
+        return createResponse(500, {
+            code: 'DATABASE_ERROR',
+            message: 'Database operation failed'
+        });
+    }
+    if (error.name === 'DataIntegrityError') {
+        return createResponse(500, {
+            code: 'DATA_INTEGRITY_ERROR',
+            message: 'Data integrity issue detected'
+        });
+    }
+    if (error.name === 'ConditionalCheckFailedException') {
+        return createResponse(409, {
+            code: 'CONDITION_FAILED',
+            message: 'Database condition check failed'
+        });
+    }
+    if (error.name === 'ValidationException') {
+        return createResponse(400, {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid data format or missing required fields'
+        });
+    }
+    if (error.name === 'ResourceNotFoundException') {
+        return createResponse(404, {
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'The requested resource was not found'
+        });
+    }
+    if (error.name === 'TransactionCanceledException') {
+        return createResponse(409, {
+            code: 'TRANSACTION_CANCELED',
+            message: 'Database transaction was canceled'
+        });
+    }
+    if (error.name === 'ProvisionedThroughputExceededException') {
+        return createResponse(429, {
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: 'Too many requests, please try again later'
+        });
+    }
+
+    // Check for AWS SDK errors
+    if (error.name === 'ServiceError' || error.$metadata?.httpStatusCode) {
+        return createResponse(500, {
+            code: 'AWS_SERVICE_ERROR',
+            message: 'AWS service error occurred',
+            details: error.message
+        });
+    }
+
+    // Authentication specific errors
+    if (error.message?.toLowerCase().includes('unauthorized')) {
+        return createResponse(401, {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required or failed'
+        });
+    }
+    if (error.message?.toLowerCase().includes('forbidden')) {
+        return createResponse(403, {
+            code: 'FORBIDDEN',
+            message: 'Access denied to requested resource'
+        });
+    }
+
+    // Generic error handler with specific codes
+    return createResponse(500, {
+        code: error.code || 'INTERNAL_SERVER_ERROR', // Changed from 'UNKNOWN'
+        message: error.message || 'An unexpected error occurred',
+        error: error.message,
+        details: {
+            context,
+            errorName: error.name,
+            errorCode: error.code,
+            stack: error.stack
+        }
+    });
 }
-
-
 function sanitizeOrderNumber(orderNumber) {
     orderNumber = String(orderNumber);
     orderNumber = orderNumber.trim();
@@ -127,7 +384,10 @@ function sanitizeOrderNumber(orderNumber) {
 async function handleUpdateDistributor(body) {
     try {
         if (!body.distributorId) {
-            return createResponse(400, { message: 'Distributor ID is required' });
+            return createResponse(400, {
+                code: 'MISSING_DISTRIBUTOR_ID',
+                message: 'Distributor ID is required'
+            });
         }
 
         const updateExpressions = [];
@@ -219,7 +479,10 @@ async function handleInsertOrder(body) {
 
         if (scanResult.Items && scanResult.Items.length > 0) {
             console.log('Order number already exists:', sanitizedOrderNumber);
-            return createResponse(409, { message: 'Order number already exists' });
+            return createResponse(409, {
+                code: 'DUPLICATE_ORDER',
+                message: 'Order number already exists'
+            });
         }
 
         console.log('Attempting to insert order:', sanitizedOrderNumber);
@@ -248,7 +511,10 @@ async function handleGenerateToken(body) {
     console.log('Generating new token');
     try {
         if (!body.linkType) {
-            return createResponse(400, { message: 'Link type is required' });
+            return createResponse(400, {
+                code: 'MISSING_LINK_TYPE',
+                message: 'Link type is required'
+            });
         }
 
         const token = crypto.randomBytes(16).toString('hex');
@@ -351,7 +617,7 @@ async function handleRegisterDistributor(body) {
             DistributorId: distributorId,
             Username: body.username,
             Email: body.email,
-            Password: body.password,
+            Password: body.password, // Store plain password
             Token: body.token,
             DistributorName: body.distributorName,
             CompanyName: body.companyName,
@@ -366,16 +632,13 @@ async function handleRegisterDistributor(body) {
             distributorItem.OrderNumber = sanitizedOrderNumber;
         }
 
-        const transactItems = [
-            {
-                Put: {
-                    TableName: 'Distributors',
-                    Item: distributorItem,
-                    // Add condition to double-check email uniqueness
-                    ConditionExpression: 'attribute_not_exists(Email)'
-                }
+        const transactItems = [{
+            Put: {
+                TableName: 'Distributors',
+                Item: distributorItem,
+                ConditionExpression: 'attribute_not_exists(Email)'
             }
-        ];
+        }];
 
         if (linkType === 'unique') {
             transactItems.push({
@@ -410,7 +673,6 @@ async function handleRegisterDistributor(body) {
     } catch (error) {
         console.error('Error registering distributor:', error);
         if (error.name === 'TransactionCanceledException') {
-            // Check if it's due to email conflict
             if (error.message.includes('ConditionalCheckFailed')) {
                 return createResponse(409, { message: 'Email already registered' });
             }
@@ -482,6 +744,15 @@ async function handleSyncOrdersAndDistributors() {
 }
 async function handleFetchIncomingOrders(event) {
     try {
+
+        const decodedToken = await verifyAuthToken(event);
+        if (!decodedToken) {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required to access this resource'
+            });
+        }
+
         console.log('Fetching incoming orders');
         const { orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
 
@@ -523,6 +794,15 @@ async function handleFetchIncomingOrders(event) {
 }
 async function handleFetchPendingDistributors(event) {
     try {
+
+        const decodedToken = await verifyAuthToken(event);
+        if (!decodedToken) {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required to access this resource'
+            });
+        }
+
         console.log('Fetching distributors');
         const { nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
 
