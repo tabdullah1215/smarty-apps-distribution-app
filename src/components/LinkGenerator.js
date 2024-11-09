@@ -1,9 +1,6 @@
 // components/LinkGenerator.js
 import React from 'react';
 import { Copy } from 'lucide-react';
-// components/LinkGenerator.js
-import React from 'react';
-import { Copy, Loader } from 'lucide-react';
 
 const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating = false }) => (
     <div className="mt-8 bg-white rounded-lg shadow-md p-6">
