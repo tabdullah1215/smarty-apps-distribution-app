@@ -3,6 +3,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { withMinimumDelay } from '../utils/withDelay';
+import authService from '../services/authService';  // Add this import
 
 export const useIncomingOrders = (setPermanentMessage) => {
     const [incomingOrders, setIncomingOrders] = useState([]);
@@ -11,6 +12,8 @@ export const useIncomingOrders = (setPermanentMessage) => {
     const fetchIncomingOrders = async (filters = {}) => {
         setIsLoading(true);
         try {
+            const token = authService.getToken();  // Use authService instead of localStorage
+
             const response = await withMinimumDelay(async () => {
                 return await axios.post(
                     `${API_ENDPOINT}/create-distributor`,
@@ -19,7 +22,12 @@ export const useIncomingOrders = (setPermanentMessage) => {
                         params: {
                             action: 'getIncomingOrders',
                             ...filters
-                        }
+                        },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        withCredentials: false
                     }
                 );
             });
