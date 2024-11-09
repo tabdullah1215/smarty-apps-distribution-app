@@ -29,16 +29,16 @@ const DashboardHeader = ({
                     <div className="w-full flex flex-col md:flex-row items-start md:items-center md:justify-between mb-2">
                         <div className="flex flex-col md:flex-row w-full md:items-center">
                             {/* Mobile Logo and Logout Container */}
-                            <div className="w-full flex items-center justify-between md:justify-start mb-1 md:mb-0">
-                                <div className="w-20"></div> {/* Spacer for centering logo */}
-                                <div className="flex justify-center">
+                            <div className="w-full md:w-auto flex items-center justify-between md:justify-start mb-1 md:mb-0">
+                                <div className="w-20 md:w-0"></div> {/* Spacer for centering logo (mobile only) */}
+                                <div className="flex justify-center md:justify-start">
                                     <img
                                         src={logoUrl}
                                         alt="SmartyApps.AI Logo"
                                         className="h-20 md:h-32"
                                     />
                                 </div>
-                                <div className="w-20 flex justify-end md:hidden">
+                                <div className="w-20 md:w-0 flex justify-end md:hidden">
                                     {!isAuthPage && (
                                         <button
                                             onClick={handleLogout}
@@ -51,7 +51,7 @@ const DashboardHeader = ({
                             </div>
 
                             <div className="flex-grow flex justify-center">
-                                <div className="flex flex-col md:border-l text-center">
+                                <div className="flex flex-col md:border-l md:ml-4 md:pl-4 text-center">
                                     <h2 className="text-lg md:text-xl text-gray-600 font-semibold">{subtitle}</h2>
                                     <h1 className="text-xl md:text-2xl font-bold text-gray-800">{title}</h1>
                                     {centerContent && (
