@@ -7,12 +7,19 @@ import authService from '../services/authService';  // Add this import
 
 export const useIncomingOrders = (setPermanentMessage) => {
     const [incomingOrders, setIncomingOrders] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);  // Renamed from isLoading
+    const [isSyncing, setIsSyncing] = useState(false);        // New state for sync
 
-    const fetchIncomingOrders = async (filters = {}) => {
-        setIsLoading(true);
+    const fetchIncomingOrders = async (filters = {}, isFromSync = false) => {
+        // Set appropriate loading state
+        if (isFromSync) {
+            setIsSyncing(true);
+        } else {
+            setIsRefreshing(true);
+        }
+
         try {
-            const token = authService.getToken();  // Use authService instead of localStorage
+            const token = authService.getToken();
 
             const response = await withMinimumDelay(async () => {
                 return await axios.post(
@@ -42,13 +49,18 @@ export const useIncomingOrders = (setPermanentMessage) => {
                 content: 'Failed to fetch incoming orders'
             });
         } finally {
-            setIsLoading(false);
+            if (isFromSync) {
+                setIsSyncing(false);
+            } else {
+                setIsRefreshing(false);
+            }
         }
     };
 
     return {
         incomingOrders,
-        isLoading,
+        isRefreshing,  // Renamed from isLoading
+        isSyncing,     // New state
         fetchIncomingOrders
     };
 };

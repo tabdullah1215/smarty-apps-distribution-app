@@ -1,8 +1,9 @@
-
 // hooks/useSyncOrders.js
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
+import { withMinimumDelay } from '../utils/withDelay';
+import authService from '../services/authService';
 
 export const useSyncOrders = (setPermanentMessage, onSuccess) => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -11,18 +12,29 @@ export const useSyncOrders = (setPermanentMessage, onSuccess) => {
         setIsSyncing(true);
         try {
             setPermanentMessage({ type: '', content: '' });
+            const token = authService.getToken();
 
-            const response = await axios.post(
-                `${API_ENDPOINT}/create-distributor`,
-                {},
-                {
-                    params: { action: 'syncOrdersAndDistributors' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
+            const response = await withMinimumDelay(async () => {
+                return await axios.post(
+                    `${API_ENDPOINT}/create-distributor`,
+                    {},
+                    {
+                        params: { action: 'syncOrdersAndDistributors' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        withCredentials: false
+                    }
+                );
+            });
 
             setPermanentMessage({ type: 'success', content: response.data.message });
-            onSuccess?.();
+
+            // Call onSuccess with isFromSync flag
+            if (onSuccess) {
+                await onSuccess(true);
+            }
         } catch (error) {
             console.error('Error syncing orders and distributors:', error);
             setPermanentMessage({

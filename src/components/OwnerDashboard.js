@@ -48,7 +48,8 @@ export default function OwnerDashboard() {
 
     const {
         incomingOrders,
-        isLoading: isLoadingOrders,
+        isRefreshing: isRefreshingOrders,
+        isSyncing: isSyncingOrders,
         fetchIncomingOrders
     } = useIncomingOrders(setPermanentMessage);
 
@@ -62,7 +63,8 @@ export default function OwnerDashboard() {
 
     const {
         pendingDistributors,
-        isLoading: isLoadingDistributors,
+        isRefreshing: isRefreshingDistributors,
+        isSyncing: isSyncingDistributors,
         fetchPendingDistributors
     } = usePendingDistributors(setPermanentMessage);
 
@@ -82,9 +84,19 @@ export default function OwnerDashboard() {
 
     const { syncOrdersAndDistributors, isSyncing } = useSyncOrders(
         setPermanentMessage,
-        () => {
-            fetchPendingDistributors();
-            fetchIncomingOrders({});
+        async (isFromSync) => {
+            await fetchPendingDistributors({
+                nameFilter,
+                emailFilter,
+                orderFilter,
+                statusFilter,
+                linkTypeFilter
+            }, isFromSync);
+            await fetchIncomingOrders({
+                orderFilter: incomingOrderFilter,
+                dateFilter: incomingDateFilter,
+                statusFilter: incomingStatusFilter
+            }, isFromSync);
         }
     );
 
@@ -229,7 +241,7 @@ export default function OwnerDashboard() {
                     }}
                     onStatusFilterChange={(e) => setStatusFilter(e.target.value)}
                     onLinkTypeFilterChange={(e) => setLinkTypeFilter(e.target.value)}
-                    isLoading={isLoadingDistributors}
+                    isLoading={isRefreshingDistributors}
                     currentPage={distributorsPage}
                     itemsPerPage={itemsPerPage}
                     Pagination={
@@ -259,7 +271,7 @@ export default function OwnerDashboard() {
                     onStatusFilterChange={(e) => setIncomingStatusFilter(e.target.value)}
                     currentPage={ordersPage}
                     itemsPerPage={itemsPerPage}
-                    isLoading={isLoadingOrders}
+                    isLoading={isRefreshingOrders}
                     Pagination={
                         <Pagination
                             currentPage={ordersPage}
