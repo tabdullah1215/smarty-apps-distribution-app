@@ -6,7 +6,7 @@
  * @param {number} minimumDelay - Minimum time in milliseconds
  * @returns {Promise<*>} Result of the operation
  */
-export const withMinimumDelay = async (operation, minimumDelay = 500) => {
+export const withMinimumDelay = async (operation, minimumDelay = 1000) => {
     const startTime = Date.now();
     const result = await operation();
     const elapsedTime = Date.now() - startTime;
