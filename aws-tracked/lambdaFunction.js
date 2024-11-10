@@ -955,7 +955,6 @@ function createResponse(statusCode, body) {
             ...headers,
             // Add only new headers that weren't in the original headers constant
             'Surrogate-Control': 'no-store',
-            'Clear-Site-Data': '"cache"',
             'X-Content-Type-Options': 'nosniff'
         },
         body: JSON.stringify(body),
