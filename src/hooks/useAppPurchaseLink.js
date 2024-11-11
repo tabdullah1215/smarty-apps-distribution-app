@@ -3,6 +3,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { withMinimumDelay } from '../utils/withDelay';
+import authService from '../services/authService';
 
 export const useAppPurchaseLink = (setPermanentMessage) => {
     const [uniquePurchaseLink, setUniquePurchaseLink] = useState('');
@@ -19,17 +20,25 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
         try {
             setPermanentMessage({ type: '', content: '' });
 
+            const token = authService.getToken();
+            const distributorId = authService.getUserInfo()?.distributorId;
+
+            if (!token || !distributorId) {
+                throw new Error('Authentication required');
+            }
+
             const response = await withMinimumDelay(async () => {
-                const result = await axios.post(`${API_ENDPOINT}/app-purchase`,
+                const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
                     {
                         linkType,
-                        appId
+                        appId,
+                        distributorId
                     },
                     {
                         params: { action: 'generatePurchaseToken' },
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`  // Include distributor's token
+                            'Authorization': `Bearer ${token}`
                         }
                     }
                 );
@@ -49,6 +58,8 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
                     type: 'success',
                     content: `${linkType.charAt(0).toUpperCase() + linkType.slice(1)} purchase link generated successfully`
                 });
+            } else {
+                throw new Error('Failed to generate purchase link');
             }
         } catch (error) {
             console.error('Error generating purchase link:', error);
@@ -60,7 +71,6 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
             setGeneratingStates(prev => ({ ...prev, [linkType]: false }));
         }
     };
-
     const copyToClipboard = (link, setCopied) => {
         setPermanentMessage({ type: '', content: '' });
 

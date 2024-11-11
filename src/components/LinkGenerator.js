@@ -3,6 +3,7 @@ import React from 'react';
 import { Copy, Loader2 } from 'lucide-react';
 
 const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating = false }) => (
+
     <div className="mt-8 bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
         <button
@@ -14,10 +15,15 @@ const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating =
             {isGenerating ? `Generating ${title}...` : `Generate ${title}`}
         </button>
         <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
-            <p className="text-lg font-semibold mb-4">Distributor Registration Link:</p>
+            <p className="text-lg font-semibold mb-4">
+                {title === "Unique Purchase Link" || title === "Generic Purchase Link"
+                    ? "App Purchase Link:"
+                    : "Distributor Registration Link:"}
+            </p>
             {link ? (
                 <div className="flex items-stretch">
-                    <div className="flex-grow p-4 bg-white rounded-l-lg border-2 border-r-0 border-gray-300 overflow-x-auto">
+                    <div
+                        className="flex-grow p-4 bg-white rounded-l-lg border-2 border-r-0 border-gray-300 overflow-x-auto">
                         <p className="text-base whitespace-nowrap">{link}</p>
                     </div>
                     <button
@@ -25,7 +31,7 @@ const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating =
                         className="px-4 bg-gray-200 rounded-r-lg border-2 border-l-0 border-gray-300 hover:bg-gray-300 transition duration-300 flex items-center"
                         title="Copy to clipboard"
                     >
-                        <Copy size={24} />
+                        <Copy size={24}/>
                     </button>
                 </div>
             ) : (

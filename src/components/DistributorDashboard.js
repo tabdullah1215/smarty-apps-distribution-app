@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import DashboardHeader from './DashboardHeader';
 import LinkGenerator from './LinkGenerator';
 import { useAppPurchaseLink } from '../hooks/useAppPurchaseLink';
 import authService from '../services/authService';
+import { API_ENDPOINT } from '../config';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
     const [selectedApp, setSelectedApp] = useState('');
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
+    const [isLoading, setIsLoading] = useState(false);
+    const [apps, setApps] = useState([]);
 
     const {
         uniquePurchaseLink,
@@ -20,6 +24,39 @@ function DistributorDashboard() {
         copyToClipboard,
         generatingStates
     } = useAppPurchaseLink(setPermanentMessage);
+
+    useEffect(() => {
+        fetchAvailableApps();
+    }, []);
+
+    const fetchAvailableApps = async () => {
+        try {
+            setIsLoading(true);
+            const token = authService.getToken();
+
+            const response = await axios.get(
+                `${API_ENDPOINT}/create-distributor`,
+                {
+                    params: { action: 'fetchAvailableApps' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (response.data.apps) {
+                setApps(response.data.apps);
+            }
+        } catch (error) {
+            console.error('Failed to fetch apps:', error);
+            setPermanentMessage({
+                type: 'error',
+                content: 'Failed to load available apps'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-200">
@@ -44,12 +81,18 @@ function DistributorDashboard() {
                             value={selectedApp}
                             onChange={(e) => setSelectedApp(e.target.value)}
                             className="w-full p-2 border rounded-md"
+                            disabled={isLoading}
                         >
                             <option value="">Select an app...</option>
-                            {/* We'll need to populate this with actual apps */}
-                            <option value="app1">App 1</option>
-                            <option value="app2">App 2</option>
+                            {apps.map(app => (
+                                <option key={app.AppId} value={app.AppId}>
+                                    {app.Name} - ${app.Price}
+                                </option>
+                            ))}
                         </select>
+                        {isLoading && (
+                            <p className="mt-2 text-sm text-gray-500">Loading available apps...</p>
+                        )}
                     </div>
                 </div>
 
