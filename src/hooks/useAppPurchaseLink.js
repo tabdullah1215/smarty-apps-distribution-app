@@ -50,7 +50,6 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
                     },
                     {
                         params: { action: 'generatePurchaseToken' }
-                        // No need to set Authorization header as it's handled globally by authService
                     }
                 );
             });
@@ -98,7 +97,6 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
             setGeneratingStates(prev => ({ ...prev, [linkType]: false }));
         }
     };
-
     const copyToClipboard = (link, setCopied) => {
         setPermanentMessage({ type: '', content: '' });
 
