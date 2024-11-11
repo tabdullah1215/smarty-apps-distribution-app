@@ -34,12 +34,14 @@ function DistributorDashboard() {
             setIsLoading(true);
             const token = authService.getToken();
 
-            const response = await axios.get(
+            const response = await axios.post(
                 `${API_ENDPOINT}/create-distributor`,
+                {},  // empty body since it's using query params
                 {
                     params: { action: 'fetchAvailableApps' },
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
                 }
             );
