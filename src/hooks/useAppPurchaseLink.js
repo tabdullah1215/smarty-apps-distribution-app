@@ -16,36 +16,46 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
     });
 
     const generatePurchaseLink = async (linkType, appId) => {
+        if (!appId) {
+            setPermanentMessage({
+                type: 'error',
+                content: 'Please select an app first'
+            });
+            return;
+        }
+
         setGeneratingStates(prev => ({ ...prev, [linkType]: true }));
         try {
             setPermanentMessage({ type: '', content: '' });
 
-            const token = authService.getToken();
-            const distributorId = authService.getUserInfo()?.distributorId;
+            const userInfo = authService.getUserInfo();
 
-            if (!token || !distributorId) {
-                throw new Error('Authentication required');
+            if (!userInfo?.sub) {
+                throw new Error('Authentication required. Please log in again.');
             }
 
+            console.log('Generating purchase link with params:', {
+                linkType,
+                appId,
+                distributorId: userInfo.sub
+            });
+
             const response = await withMinimumDelay(async () => {
-                const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                return await axios.post(
+                    `${API_ENDPOINT}/create-distributor`,
                     {
                         linkType,
                         appId,
-                        distributorId
+                        distributorId: userInfo.sub // Using sub from JWT as distributorId
                     },
                     {
-                        params: { action: 'generatePurchaseToken' },
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
+                        params: { action: 'generatePurchaseToken' }
+                        // No need to set Authorization header as it's handled globally by authService
                     }
                 );
-                return result;
             });
 
-            if (response.data.token) {
+            if (response?.data?.token) {
                 const purchaseLink = `${window.location.origin}/purchase-app/${appId}/${linkType}/${response.data.token}`;
                 if (linkType === 'unique') {
                     setUniquePurchaseLink(purchaseLink);
@@ -59,18 +69,36 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
                     content: `${linkType.charAt(0).toUpperCase() + linkType.slice(1)} purchase link generated successfully`
                 });
             } else {
-                throw new Error('Failed to generate purchase link');
+                throw new Error('Invalid response format - missing token');
             }
         } catch (error) {
             console.error('Error generating purchase link:', error);
+            let errorMessage = 'Failed to generate purchase link. Please try again.';
+
+            if (error.response) {
+                console.error('Server Error Response:', {
+                    status: error.response.status,
+                    data: error.response.data,
+                    headers: error.response.headers
+                });
+                errorMessage = error.response.data?.message || error.response.data?.error || errorMessage;
+            } else if (error.request) {
+                console.error('No Response Received:', error.request);
+                errorMessage = 'No response received from server. Please check your connection.';
+            } else {
+                console.error('Request Setup Error:', error.message);
+                errorMessage = error.message;
+            }
+
             setPermanentMessage({
                 type: 'error',
-                content: error.response?.data?.message || 'Failed to generate purchase link. Please try again.'
+                content: errorMessage
             });
         } finally {
             setGeneratingStates(prev => ({ ...prev, [linkType]: false }));
         }
     };
+
     const copyToClipboard = (link, setCopied) => {
         setPermanentMessage({ type: '', content: '' });
 
