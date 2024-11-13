@@ -45,6 +45,327 @@ function generateToken(user) {
     );
 }
 
+async function handleFetchAvailableApps(event) {
+    try {
+        console.log('Processing fetchAvailableApps request');
+        console.log('Auth header:', event.headers.Authorization);
+
+        const decodedToken = await verifyAuthToken(event);
+        console.log('Decoded token:', decodedToken);
+
+        if (!decodedToken || decodedToken.role !== 'Distributor') {
+            console.log('Auth failed - Token:', decodedToken);
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required'
+            });
+        }
+
+        // Get apps assigned to this distributor
+        const distributorAppsResult = await ddbDocClient.send(new QueryCommand({
+            TableName: 'DistributorApps',
+            KeyConditionExpression: 'DistributorId = :distributorId',
+            ExpressionAttributeValues: {
+                ':distributorId': decodedToken.sub
+            }
+        }));
+
+        if (!distributorAppsResult.Items || distributorAppsResult.Items.length === 0) {
+            return createResponse(200, { apps: [] });
+        }
+
+        // Get full app details
+        const appIds = distributorAppsResult.Items.map(item => ({
+            AppId: item.AppId
+        }));
+
+        const appsResult = await ddbDocClient.send(new BatchGetCommand({
+            RequestItems: {
+                'Apps': {
+                    Keys: appIds
+                }
+            }
+        }));
+
+        const availableApps = appsResult.Responses.Apps
+            .filter(app => app.Status === 'active')
+            .map(app => ({
+                ...app,
+                commission: distributorAppsResult.Items.find(
+                    da => da.AppId === app.AppId
+                ).CommissionRate
+            }));
+
+        return createResponse(200, { apps: availableApps });
+    } catch (error) {
+        console.error('Error fetching available apps:', error);
+        return handleLambdaError(error, 'handleFetchAvailableApps');
+    }
+}
+
+async function handleGenerateAppPurchaseToken(body, event) { // Add event parameter
+    console.log('Generating new app purchase token', {
+        receivedBody: body,
+        distributorId: body.distributorId,
+        hasAuth: !!event.headers.Authorization
+    });
+
+    try {
+        if (!body.linkType || !body.appId || !body.distributorId) {
+            console.log('Missing required fields:', {
+                hasLinkType: !!body.linkType,
+                hasAppId: !!body.appId,
+                hasDistributorId: !!body.distributorId
+            });
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Link type, app ID, and distributor ID are required for purchase token generation'
+            });
+        }
+
+        // Verify auth using the same method as other endpoints
+        const decodedToken = await verifyAuthToken(event);
+        console.log('Token verification result:', {
+            hasToken: !!decodedToken,
+            tokenRole: decodedToken?.role,
+            tokenSub: decodedToken?.sub
+        });
+
+        if (!decodedToken || decodedToken.role !== 'Distributor' || decodedToken.sub !== body.distributorId) {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Valid distributor authentication required'
+            });
+        }
+
+        // Rest of the function remains the same
+        const appResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'Apps',
+            Key: { AppId: body.appId }
+        }));
+
+        console.log('App lookup result:', {
+            found: !!appResult.Item,
+            status: appResult.Item?.Status
+        });
+
+        if (!appResult.Item || appResult.Item.Status !== 'active') {
+            return createResponse(403, {
+                code: 'APP_NOT_AVAILABLE',
+                message: 'App is not currently available for purchase'
+            });
+        }
+
+        // Verify the specific app is available for this distributor
+        const appDistributorResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'DistributorApps',
+            Key: {
+                DistributorId: body.distributorId,
+                AppId: body.appId
+            }
+        }));
+
+        console.log('Distributor-App relationship lookup result:', {
+            found: !!appDistributorResult.Item,
+            distributorId: body.distributorId,
+            appId: body.appId
+        });
+
+        if (!appDistributorResult.Item) {
+            return createResponse(403, {
+                code: 'APP_NOT_AUTHORIZED',
+                message: 'Distributor is not authorized to sell this app'
+            });
+        }
+
+        // Generate token
+        const token = crypto.randomBytes(16).toString('hex');
+        const createdAt = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)).toISOString(); // 30 days expiry
+
+        const tokenItem = {
+            Token: token,
+            CreatedAt: createdAt,
+            ExpiresAt: expiresAt,
+            LinkType: body.linkType,
+            AppId: body.appId,
+            DistributorId: body.distributorId,
+            Status: body.linkType === 'unique' ? 'pending' : 'active'
+        };
+
+        await ddbDocClient.send(new PutCommand({
+            TableName: 'AppPurchaseTokens',
+            Item: tokenItem
+        }));
+
+        console.log('App purchase token generated:', {
+            token,
+            appId: body.appId,
+            distributorId: body.distributorId,
+            linkType: body.linkType,
+            status: tokenItem.Status
+        });
+
+        return createResponse(200, {
+            token,
+            expiresAt,
+            status: tokenItem.Status
+        });
+
+    } catch (error) {
+        console.error('Error generating app purchase token:', error);
+        if (error.name === 'ValidationException') {
+            return createResponse(400, {
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid data format provided'
+            });
+        }
+        return handleLambdaError(error, 'handleGenerateAppPurchaseToken');
+    }
+}
+async function handleVerifyAppPurchase(body) {
+    console.log('Processing app purchase verification');
+    try {
+        if (!body.token || !body.appId) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Token and app ID are required'
+            });
+        }
+
+        // Verify the purchase token
+        const tokenResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppPurchaseTokens',
+            Key: { Token: body.token }
+        }));
+
+        if (!tokenResult.Item) {
+            return createResponse(400, {
+                code: 'INVALID_TOKEN',
+                message: 'Invalid purchase token'
+            });
+        }
+
+        // Check token expiration
+        if (new Date(tokenResult.Item.ExpiresAt) < new Date()) {
+            return createResponse(400, {
+                code: 'TOKEN_EXPIRED',
+                message: 'Purchase token has expired'
+            });
+        }
+
+        // Verify token status based on type
+        if ((tokenResult.Item.LinkType === 'unique' && tokenResult.Item.Status !== 'pending') ||
+            (tokenResult.Item.LinkType === 'generic' && tokenResult.Item.Status !== 'active')) {
+            return createResponse(400, {
+                code: 'INVALID_TOKEN_STATUS',
+                message: 'Purchase token is invalid or has already been used'
+            });
+        }
+
+        const purchaseId = crypto.randomBytes(16).toString('hex');
+        const purchaseDate = new Date().toISOString();
+
+        let purchaseStatus = tokenResult.Item.LinkType === 'unique' ? 'active' : 'pending';
+        let orderMatchFound = false;
+
+        // For generic links, verify order number
+        if (tokenResult.Item.LinkType === 'generic' && body.orderNumber) {
+            try {
+                const sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
+                const orderResult = await ddbDocClient.send(new GetCommand({
+                    TableName: 'AppPurchaseOrders',
+                    Key: { OrderNumber: sanitizedOrderNumber }
+                }));
+
+                if (orderResult.Item &&
+                    (orderResult.Item.Status === 'pending' || !orderResult.Item.Status)) {
+                    orderMatchFound = true;
+                    purchaseStatus = 'active';
+                }
+
+                // Check if order number already used for another purchase
+                const existingPurchase = await ddbDocClient.send(new ScanCommand({
+                    TableName: 'AppPurchases',
+                    FilterExpression: 'OrderNumber = :orderNumber',
+                    ExpressionAttributeValues: {
+                        ':orderNumber': sanitizedOrderNumber
+                    }
+                }));
+
+                if (existingPurchase.Items && existingPurchase.Items.length > 0) {
+                    return createResponse(400, {
+                        code: 'ORDER_ALREADY_USED',
+                        message: 'Order number has already been used for a purchase'
+                    });
+                }
+            } catch (sanitizationError) {
+                return createResponse(400, {
+                    code: 'INVALID_ORDER_NUMBER',
+                    message: sanitizationError.message
+                });
+            }
+        }
+
+        // Create the app purchase record
+        const transactItems = [{
+            Put: {
+                TableName: 'AppPurchases',
+                Item: {
+                    PurchaseId: purchaseId,
+                    AppId: body.appId,
+                    Token: body.token,
+                    DistributorId: tokenResult.Item.DistributorId,
+                    LinkType: tokenResult.Item.LinkType,
+                    PurchaseDate: purchaseDate,
+                    Status: purchaseStatus,
+                    OrderNumber: body.orderNumber || null
+                }
+            }
+        }];
+
+        // Update token status for unique links
+        if (tokenResult.Item.LinkType === 'unique') {
+            transactItems.push({
+                Update: {
+                    TableName: 'AppPurchaseTokens',
+                    Key: { Token: body.token },
+                    UpdateExpression: 'SET #status = :statusValue',
+                    ExpressionAttributeNames: { '#status': 'Status' },
+                    ExpressionAttributeValues: { ':statusValue': 'used' }
+                }
+            });
+        }
+
+        // Update order status if order matched
+        if (orderMatchFound) {
+            transactItems.push({
+                Update: {
+                    TableName: 'AppPurchaseOrders',
+                    Key: { OrderNumber: body.orderNumber },
+                    UpdateExpression: 'SET #status = :statusValue',
+                    ExpressionAttributeNames: { '#status': 'Status' },
+                    ExpressionAttributeValues: { ':statusValue': 'used' }
+                }
+            });
+        }
+
+        await ddbDocClient.send(new TransactWriteCommand({
+            TransactItems: transactItems
+        }));
+
+        return createResponse(200, {
+            message: 'App purchase processed successfully',
+            purchaseId,
+            status: purchaseStatus
+        });
+
+    } catch (error) {
+        console.error('Error processing app purchase:', error);
+        return handleLambdaError(error, 'handleVerifyAppPurchase');
+    }
+}
+
 function verifyToken(token) {
     try {
         return jwt.verify(token, JWT_SECRET);
@@ -248,6 +569,12 @@ exports.handler = async (event) => {
                 return await handleBulkInsertOrders(body);
             case 'updateDistributor':
                 return await handleUpdateDistributor(body);
+            case 'generatePurchaseToken':
+                return await handleGenerateAppPurchaseToken(body, event);
+            case 'verifyAppPurchase':
+                return await handleVerifyAppPurchase(body);
+            case 'fetchAvailableApps':
+                return await handleFetchAvailableApps(event);
             default:
                 return createResponse(400, {
                     code: 'INVALID_ACTION', // Added error code
