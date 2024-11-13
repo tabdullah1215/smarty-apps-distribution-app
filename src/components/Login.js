@@ -1,23 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API_ENDPOINT } from '../config';
+import { useLocation } from 'react-router-dom';
 import DashboardHeader from './DashboardHeader';
 import authService from '../services/authService';
+import { useLogin } from '../hooks/useLogin';
 
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const location = useLocation();
-    const navigate = useNavigate();
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
+    const location = useLocation();
+    const { isLoading, handleLogin } = useLogin(setPermanentMessage);
 
     useEffect(() => {
-        // Clear any existing auth on login page load
         authService.removeToken();
 
-        // Handle registration success message
         if (location.state?.registration === 'success') {
             setPermanentMessage({ type: 'success', content: location.state.message });
             setEmail(location.state.email || '');
@@ -27,133 +23,7 @@ function Login() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setPermanentMessage({ type: '', content: '' });
-        setIsLoading(true);
-
-        try {
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
-                { email, password },
-                {
-                    params: { action: 'verifyCredentials' },
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-
-            if (response.data.token) {
-                // Store the JWT token
-                authService.setToken(response.data.token);
-                setPermanentMessage({ type: 'success', content: 'Login successful!' });
-
-                // Get user info from token
-                const userInfo = authService.getUserInfo();
-                if (userInfo) {
-                    localStorage.setItem('distributor_username', userInfo.email);
-                }
-
-                // Navigate based on user role
-                if (userInfo.role === 'Distributor') {
-                    navigate('/distributor');
-                } else {
-                    navigate('/');  // Default to owner dashboard
-                }
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            const errorCode = error.response?.data?.code;
-            const errorMsg = error.response?.data?.message || 'Failed to login. Please try again.';
-
-            switch (errorCode) {
-                case 'INVALID_CREDENTIALS':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Invalid email or password'
-                    });
-                    break;
-
-                case 'ACCOUNT_INACTIVE':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Your account is not active. Please contact support.'
-                    });
-                    break;
-
-                case 'MISSING_CREDENTIALS':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Please enter both email and password.'
-                    });
-                    break;
-
-                case 'INVALID_TOKEN':
-                case 'TOKEN_EXPIRED':
-                    // Clear any existing auth and redirect to login
-                    authService.removeToken();
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Your session has expired. Please log in again.'
-                    });
-                    break;
-
-                case 'RATE_LIMIT_EXCEEDED':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Too many login attempts. Please try again later.'
-                    });
-                    break;
-
-                case 'VALIDATION_ERROR':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Please check your email format and password length.'
-                    });
-                    break;
-
-                case 'RESOURCE_NOT_FOUND':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Account not found. Please check your email or register.'
-                    });
-                    break;
-
-                case 'CONDITION_FAILED':
-                case 'TRANSACTION_CANCELED':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Login failed due to a database error. Please try again.'
-                    });
-                    break;
-
-                case 'DATABASE_ERROR':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Unable to access user information. Please try again later.'
-                    });
-                    break;
-
-                case 'DATA_INTEGRITY_ERROR':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Account data issue detected. Please contact support.'
-                    });
-                    break;
-
-                case 'AWS_SERVICE_ERROR':
-                    setPermanentMessage({
-                        type: 'error',
-                        content: 'Service temporarily unavailable. Please try again later.'
-                    });
-                    break;
-
-
-                default:
-                    setPermanentMessage({
-                        type: 'error',
-                        content: `${errorMsg} (Code: ${errorCode || 'INTERNAL_SERVER_ERROR'})`
-                    });
-            }
-        } finally {
-            setIsLoading(false);
-        }
+        await handleLogin(email, password);
     };
 
     return (
