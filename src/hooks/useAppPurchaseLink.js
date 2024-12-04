@@ -54,8 +54,8 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
                 );
             });
 
-            if (response?.data?.token) {
-                const purchaseLink = `${window.location.origin}/purchase-app/${appId}/${linkType}/${response.data.token}`;
+            if (response?.data?.token && response?.data?.appDomain) {  // Add appDomain check
+                const purchaseLink = `${response.data.appDomain}/register/${appId}/${linkType}/${response.data.token}`;
                 if (linkType === 'unique') {
                     setUniquePurchaseLink(purchaseLink);
                     setCopiedUnique(false);
