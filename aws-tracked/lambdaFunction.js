@@ -209,7 +209,8 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
         return createResponse(200, {
             token,
             expiresAt,
-            status: tokenItem.Status
+            status: tokenItem.Status,
+            appDomain: appResult.Item.AppDomain
         });
 
     } catch (error) {
