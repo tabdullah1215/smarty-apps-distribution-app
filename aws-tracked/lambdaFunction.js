@@ -224,13 +224,68 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
         return handleLambdaError(error, 'handleGenerateAppPurchaseToken');
     }
 }
+
+async function handleAppLogin(body) {
+    try {
+        if (!body.appId || !body.email || !body.password) {
+            return createResponse(400, {
+                code: 'MISSING_CREDENTIALS',
+                message: 'App ID, email and password are required'
+            });
+        }
+
+        // Lookup user by AppId and Email composite key
+        const userResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppUsers',
+            Key: {
+                AppId: body.appId,
+                Email: body.email
+            }
+        }));
+
+        if (!userResult.Item || userResult.Item.Password !== body.password) {
+            return createResponse(401, {
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
+        }
+
+        if (userResult.Item.Status !== 'active') {
+            return createResponse(403, {
+                code: 'ACCOUNT_INACTIVE',
+                message: 'Account is not active'
+            });
+        }
+
+        // Generate JWT for app user
+        const token = jwt.sign(
+            {
+                sub: userResult.Item.Email,
+                appId: body.appId,
+                status: userResult.Item.Status
+            },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRATION }
+        );
+
+        return createResponse(200, {
+            token,
+            user: {
+                email: userResult.Item.Email,
+                status: userResult.Item.Status
+            }
+        });
+    } catch (error) {
+        return handleLambdaError(error, 'handleAppLogin');
+    }
+}
 async function handleVerifyAppPurchase(body) {
     console.log('Processing app purchase verification');
     try {
-        if (!body.token || !body.appId) {
+        if (!body.token || !body.appId || !body.email || !body.password) {
             return createResponse(400, {
                 code: 'MISSING_REQUIRED_FIELDS',
-                message: 'Token and app ID are required'
+                message: 'Token, app ID, email, and password are required'
             });
         }
 
@@ -264,9 +319,7 @@ async function handleVerifyAppPurchase(body) {
             });
         }
 
-        const purchaseId = crypto.randomBytes(16).toString('hex');
         const purchaseDate = new Date().toISOString();
-
         let purchaseStatus = tokenResult.Item.LinkType === 'unique' ? 'active' : 'pending';
         let orderMatchFound = false;
 
@@ -285,16 +338,16 @@ async function handleVerifyAppPurchase(body) {
                     purchaseStatus = 'active';
                 }
 
-                // Check if order number already used for another purchase
-                const existingPurchase = await ddbDocClient.send(new ScanCommand({
-                    TableName: 'AppPurchases',
+                // Check if order number already used for another user
+                const existingUserScan = await ddbDocClient.send(new ScanCommand({
+                    TableName: 'AppUsers',
                     FilterExpression: 'OrderNumber = :orderNumber',
                     ExpressionAttributeValues: {
                         ':orderNumber': sanitizedOrderNumber
                     }
                 }));
 
-                if (existingPurchase.Items && existingPurchase.Items.length > 0) {
+                if (existingUserScan.Items && existingUserScan.Items.length > 0) {
                     return createResponse(400, {
                         code: 'ORDER_ALREADY_USED',
                         message: 'Order number has already been used for a purchase'
@@ -308,22 +361,23 @@ async function handleVerifyAppPurchase(body) {
             }
         }
 
-        // Create the app purchase record
-        const transactItems = [{
-            Put: {
-                TableName: 'AppPurchases',
-                Item: {
-                    PurchaseId: purchaseId,
-                    AppId: body.appId,
-                    Token: body.token,
-                    DistributorId: tokenResult.Item.DistributorId,
-                    LinkType: tokenResult.Item.LinkType,
-                    PurchaseDate: purchaseDate,
-                    Status: purchaseStatus,
-                    OrderNumber: body.orderNumber || null
+        const transactItems = [
+            {
+                Put: {
+                    TableName: 'AppUsers',
+                    Item: {
+                        AppId: body.appId,
+                        Email: body.email,
+                        Password: body.password,
+                        Status: 'active',
+                        CreatedAt: purchaseDate,
+                        Token: body.token,
+                        OrderNumber: body.orderNumber || null
+                    },
+                    ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(Email)'
                 }
             }
-        }];
+        ];
 
         // Update token status for unique links
         if (tokenResult.Item.LinkType === 'unique') {
@@ -356,17 +410,23 @@ async function handleVerifyAppPurchase(body) {
         }));
 
         return createResponse(200, {
-            message: 'App purchase processed successfully',
-            purchaseId,
+            message: 'App registration successful',
             status: purchaseStatus
         });
 
     } catch (error) {
         console.error('Error processing app purchase:', error);
+        if (error.name === 'TransactionCanceledException') {
+            if (error.message.includes('ConditionalCheckFailed')) {
+                return createResponse(409, {
+                    code: 'EMAIL_EXISTS',
+                    message: 'Email already registered for this app'
+                });
+            }
+        }
         return handleLambdaError(error, 'handleVerifyAppPurchase');
     }
 }
-
 function verifyToken(token) {
     try {
         return jwt.verify(token, JWT_SECRET);
@@ -576,6 +636,8 @@ exports.handler = async (event) => {
                 return await handleVerifyAppPurchase(body);
             case 'fetchAvailableApps':
                 return await handleFetchAvailableApps(event);
+            case 'appLogin':
+                return await handleAppLogin(body);
             default:
                 return createResponse(400, {
                     code: 'INVALID_ACTION', // Added error code
