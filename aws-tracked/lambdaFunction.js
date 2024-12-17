@@ -1,5 +1,3 @@
-
-
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, QueryCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
@@ -43,6 +41,68 @@ function generateToken(user) {
         JWT_SECRET,
         { expiresIn: JWT_EXPIRATION }
     );
+}
+
+async function handleGetPendingAppUsers(event) {
+    try {
+        const decodedToken = await verifyAuthToken(event);
+        if (!decodedToken) {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required to access this resource'
+            });
+        }
+
+        console.log('Fetching pending app users');
+        const { appFilter, emailFilter, orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
+
+        let filterExpression = ['DistributorId = :distributorId'];
+        let expressionAttributeNames = {};
+        let expressionAttributeValues = {
+            ':distributorId': decodedToken.sub
+        };
+
+        if (appFilter) {
+            filterExpression.push('AppId = :appFilter');
+            expressionAttributeValues[':appFilter'] = appFilter;
+        }
+
+        if (emailFilter) {
+            filterExpression.push('contains(Email, :emailFilter)');
+            expressionAttributeValues[':emailFilter'] = emailFilter;
+        }
+
+        if (orderFilter) {
+            filterExpression.push('contains(OrderNumber, :orderFilter)');
+            expressionAttributeValues[':orderFilter'] = orderFilter;
+        }
+
+        if (dateFilter) {
+            filterExpression.push('begins_with(CreatedAt, :dateFilter)');
+            expressionAttributeValues[':dateFilter'] = dateFilter;
+        }
+
+        if (statusFilter) {
+            filterExpression.push('#status = :statusFilter');
+            expressionAttributeNames['#status'] = 'Status';
+            expressionAttributeValues[':statusFilter'] = statusFilter;
+        }
+
+        const scanParams = {
+            TableName: 'AppUsers',
+            FilterExpression: filterExpression.join(' AND '),
+            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
+            ExpressionAttributeValues: expressionAttributeValues
+        };
+
+        const scanResult = await ddbDocClient.send(new ScanCommand(scanParams));
+
+        console.log('App users fetched:', scanResult.Items.length);
+        return createResponse(200, scanResult.Items);
+    } catch (error) {
+        console.error('Error fetching app users:', error);
+        return createResponse(500, { message: 'Error fetching app users', error: error.message });
+    }
 }
 
 async function handleFetchAvailableApps(event) {
@@ -548,10 +608,12 @@ async function handleVerifyAppPurchase(body) {
                         AppId: body.appId,
                         Email: body.email,
                         Password: body.password,
-                        Status: 'active',
+                        Status: purchaseStatus,
                         CreatedAt: purchaseDate,
                         Token: body.token,
-                        OrderNumber: body.orderNumber || null
+                        OrderNumber: body.orderNumber || null,
+                        DistributorId: tokenResult.Item.DistributorId,  // Also need to store this
+                        LinkType: tokenResult.Item.LinkType  // And this for filtering
                     },
                     ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(Email)'
                 }
@@ -680,7 +742,7 @@ async function handleVerifyCredentials(body) {
             });
         }
 
-        if (distributor.Status !== 'active') {
+        if (distributor.Status !== 'active' && distributor.Status !== 'pending') {
             return createResponse(403, {
                 code: 'ACCOUNT_INACTIVE',
                 message: 'Account is not active'
@@ -823,6 +885,8 @@ exports.handler = async (event) => {
                 return await handleInsertAppPurchaseOrder(body, event);
             case 'getAppPurchaseOrders':
                 return await handleFetchAppPurchaseOrders(event);
+            case 'getPendingAppUsers':
+                return await handleGetPendingAppUsers(event);
             default:
                 return createResponse(400, {
                     code: 'INVALID_ACTION', // Added error code
