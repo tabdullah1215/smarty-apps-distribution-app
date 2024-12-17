@@ -279,6 +279,183 @@ async function handleAppLogin(body) {
         return handleLambdaError(error, 'handleAppLogin');
     }
 }
+
+async function handleFetchAppPurchaseOrders(event) {
+    try {
+        const decodedToken = await verifyAuthToken(event);
+        if (!decodedToken) {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Authentication required to access this resource'
+            });
+        }
+
+        console.log('Fetching app purchase orders');
+        const { orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
+
+        let filterExpression = ['DistributorId = :distributorId'];
+        let expressionAttributeNames = {};
+        let expressionAttributeValues = {
+            ':distributorId': decodedToken.sub  // Add this line
+        };
+
+        if (orderFilter) {
+            filterExpression.push('contains(OrderNumber, :orderFilter)');
+            expressionAttributeValues[':orderFilter'] = orderFilter;
+        }
+
+        if (dateFilter) {
+            filterExpression.push('begins_with(CreatedAt, :dateFilter)');
+            expressionAttributeValues[':dateFilter'] = dateFilter;
+        }
+
+        if (statusFilter) {
+            filterExpression.push('#status = :statusFilter');
+            expressionAttributeNames['#status'] = 'Status';
+            expressionAttributeValues[':statusFilter'] = statusFilter;
+        }
+
+        const scanParams = {
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: filterExpression.join(' AND '),
+            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
+            ExpressionAttributeValues: Object.keys(expressionAttributeValues).length > 0 ? expressionAttributeValues : undefined
+        };
+
+        const scanResult = await ddbDocClient.send(new ScanCommand(scanParams));
+
+        console.log('App purchase orders fetched:', scanResult.Items.length);
+        return createResponse(200, scanResult.Items);
+    } catch (error) {
+        console.error('Error fetching app purchase orders:', error);
+        return handleLambdaError(error, 'handleFetchAppPurchaseOrders');
+    }
+}
+
+async function handleInsertAppPurchaseOrder(body, event) {
+    console.log('Processing insert app purchase order request');
+    try {
+        if (!body.orderNumber) {
+            return createResponse(400, { message: 'Order number is required' });
+        }
+
+        const decodedToken = await verifyAuthToken(event);
+        if (!decodedToken || decodedToken.role !== 'Distributor') {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Valid distributor authentication required'
+            });
+        }
+
+        let sanitizedOrderNumber;
+        try {
+            sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
+        } catch (sanitizationError) {
+            return createResponse(400, { message: sanitizationError.message });
+        }
+
+        const scanResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'OrderNumber = :orderNumber',
+            ExpressionAttributeValues: {
+                ':orderNumber': sanitizedOrderNumber
+            }
+        }));
+
+        if (scanResult.Items && scanResult.Items.length > 0) {
+            return createResponse(409, {
+                code: 'DUPLICATE_ORDER',
+                message: 'Order number already exists'
+            });
+        }
+
+        await ddbDocClient.send(new PutCommand({
+            TableName: 'AppPurchaseOrders',
+            Item: {
+                OrderNumber: sanitizedOrderNumber,
+                CreatedAt: new Date().toISOString(),
+                Status: 'pending',
+                DistributorId: decodedToken.sub
+            }
+        }));
+
+        return createResponse(200, {
+            message: 'Order number inserted successfully',
+            orderNumber: sanitizedOrderNumber,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        return handleLambdaError(error, 'handleInsertAppPurchaseOrder');
+    }
+}
+
+async function handleSyncAppUsers() {
+    try {
+        const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'attribute_not_exists(#status) OR #status = :pendingStatus',
+            ExpressionAttributeNames: { '#status': 'Status' },
+            ExpressionAttributeValues: { ':pendingStatus': 'pending' }
+        }));
+
+        const pendingUsersResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppUsers',
+            FilterExpression: '#status = :pendingStatus',
+            ExpressionAttributeNames: { '#status': 'Status' },
+            ExpressionAttributeValues: { ':pendingStatus': 'pending' }
+        }));
+
+        const transactItems = [];
+
+        for (const order of pendingOrdersResult.Items) {
+            const matchingUser = pendingUsersResult.Items.find(
+                user => user.OrderNumber === order.OrderNumber
+            );
+
+            if (matchingUser) {
+                transactItems.push({
+                    Update: {
+                        TableName: 'AppPurchaseOrders',
+                        Key: { OrderNumber: order.OrderNumber },
+                        UpdateExpression: 'SET #status = :usedStatus',
+                        ExpressionAttributeNames: { '#status': 'Status' },
+                        ExpressionAttributeValues: { ':usedStatus': 'used' }
+                    }
+                });
+
+                transactItems.push({
+                    Update: {
+                        TableName: 'AppUsers',
+                        Key: {
+                            AppId: matchingUser.AppId,
+                            Email: matchingUser.Email
+                        },
+                        UpdateExpression: 'SET #status = :activeStatus',
+                        ExpressionAttributeNames: { '#status': 'Status' },
+                        ExpressionAttributeValues: { ':activeStatus': 'active' }
+                    }
+                });
+
+                if (transactItems.length === 25) {
+                    await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+                    transactItems.length = 0;
+                }
+            }
+        }
+
+        if (transactItems.length > 0) {
+            await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+        }
+
+        return createResponse(200, {
+            message: `Sync completed. Updated ${transactItems.length / 2} pairs.`
+        });
+
+    } catch (error) {
+        console.error('Error syncing app users:', error);
+        return handleLambdaError(error, 'handleSyncAppUsers');
+    }
+}
 async function handleVerifyAppPurchase(body) {
     console.log('Processing app purchase verification');
     try {
@@ -336,6 +513,8 @@ async function handleVerifyAppPurchase(body) {
                     (orderResult.Item.Status === 'pending' || !orderResult.Item.Status)) {
                     orderMatchFound = true;
                     purchaseStatus = 'active';
+                } else {
+                    purchaseStatus = 'pending';  // Set pending if no order match
                 }
 
                 // Check if order number already used for another user
@@ -638,6 +817,12 @@ exports.handler = async (event) => {
                 return await handleFetchAvailableApps(event);
             case 'appLogin':
                 return await handleAppLogin(body);
+            case 'syncAppUsers':
+                return await handleSyncAppUsers();
+            case 'insertAppPurchaseOrder':
+                return await handleInsertAppPurchaseOrder(body, event);
+            case 'getAppPurchaseOrders':
+                return await handleFetchAppPurchaseOrders(event);
             default:
                 return createResponse(400, {
                     code: 'INVALID_ACTION', // Added error code
@@ -1060,6 +1245,38 @@ async function handleRegisterDistributor(body) {
         await ddbDocClient.send(new TransactWriteCommand({
             TransactItems: transactItems
         }));
+
+        // After the successful transaction that creates the distributor, add:
+        const appsResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'Apps',
+            FilterExpression: '#status = :activeStatus',
+            ExpressionAttributeNames: { '#status': 'Status' },
+            ExpressionAttributeValues: { ':activeStatus': 'active' }
+        }));
+
+        if (appsResult.Items && appsResult.Items.length > 0) {
+            const batchSize = 25; // DynamoDB limit
+            const appAssignments = appsResult.Items.map(app => ({
+                Put: {
+                    TableName: 'DistributorApps',
+                    Item: {
+                        DistributorId: distributorId,
+                        AppId: app.AppId,
+                        CreatedAt: new Date().toISOString(),
+                        Status: 'active',
+                        CommissionRate: 0.3  // Default commission rate
+                    }
+                }
+            }));
+
+            // Process in batches due to DynamoDB limits
+            for (let i = 0; i < appAssignments.length; i += batchSize) {
+                const batch = appAssignments.slice(i, i + batchSize);
+                await ddbDocClient.send(new TransactWriteCommand({
+                    TransactItems: batch
+                }));
+            }
+        }
 
         console.log('Successfully registered distributor');
         return createResponse(200, { message: 'Distributor registered successfully' });
