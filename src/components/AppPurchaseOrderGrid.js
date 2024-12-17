@@ -71,7 +71,11 @@ const AppPurchaseOrderGrid = ({
                     <option value="used">Used</option>
                 </select>
             </div>
-            <div className="h-[440px] overflow-y-auto relative">
+            <div className={`overflow-y-auto transition-all duration-200 ${
+                orders.length === 0 ? 'h-[100px]' :
+                    orders.length <= 5 ? 'h-[300px]' :
+                        'h-[440px]'
+            }`}>
                 <table className="w-full border-collapse border">
                     <thead>
                     <tr className="bg-gray-200">

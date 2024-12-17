@@ -87,7 +87,11 @@ const PendingAppUsersGrid = ({
                     <option value="generic">Generic</option>
                 </select>
             </div>
-            <div className="h-[440px] overflow-y-auto">
+            <div className={`overflow-y-auto transition-all duration-200 ${
+                appUsers.length === 0 ? 'h-[100px]' :
+                    appUsers.length <= 5 ? 'h-[300px]' :
+                        'h-[440px]'
+            }`}>
                 <table className="w-full border-collapse border">
                     <thead>
                     <tr className="bg-gray-200">
