@@ -10,6 +10,9 @@ import { useAppPurchaseOrders } from '../hooks/useAppPurchaseOrders';
 import AppPurchaseOrderGrid from './AppPurchaseOrderGrid';
 import Pagination from './Pagination';
 import { useDebounce } from '../hooks/useDebounce';
+import { usePendingAppUsers } from '../hooks/usePendingAppUsers';
+import PendingAppUsersGrid from './PendingAppUsersGrid';
+import AppUserEditModal from './AppUserEditModal';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -27,6 +30,23 @@ function DistributorDashboard() {
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const itemsPerPage = 10;
+    const [appUsersPage, setAppUsersPage] = useState(1);
+    const [appFilter, setAppFilter] = useState('');
+    const [appFilterImmediate, setAppFilterImmediate] = useState('');
+    const [emailFilter, setEmailFilter] = useState('');
+    const [emailFilterImmediate, setEmailFilterImmediate] = useState('');
+    const [appUserOrderFilter, setAppUserOrderFilter] = useState('');
+    const [appUserOrderFilterImmediate, setAppUserOrderFilterImmediate] = useState('');
+    const [appUserStatusFilter, setAppUserStatusFilter] = useState('pending');
+    const [selectedAppUser, setSelectedAppUser] = useState(null);
+    const [showAppUserEditModal, setShowAppUserEditModal] = useState(false);
+    const [appUserLinkTypeFilter, setAppUserLinkTypeFilter] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
+// Add debounced setters
+    const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
+    const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
+    const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
 
 
     const {
@@ -41,6 +61,13 @@ function DistributorDashboard() {
         generatingStates
     } = useAppPurchaseLink(setPermanentMessage);
 
+    const {
+        pendingAppUsers,
+        isRefreshing: isRefreshingAppUsers,
+        isSyncing: isSyncingAppUsers,
+        fetchPendingAppUsers
+    } = usePendingAppUsers(setPermanentMessage);
+
     useEffect(() => {
         fetchAvailableApps();
     }, []);
@@ -52,6 +79,16 @@ function DistributorDashboard() {
             statusFilter
         });
     }, [orderFilter, dateFilter, statusFilter]);
+
+    useEffect(() => {
+        fetchPendingAppUsers({
+            appFilter,
+            emailFilter,
+            orderFilter: appUserOrderFilter,
+            statusFilter: appUserStatusFilter,
+            linkTypeFilter: appUserLinkTypeFilter
+        });
+    }, [appFilter, emailFilter, appUserOrderFilter, appUserStatusFilter, appUserLinkTypeFilter]);
 
     const fetchAvailableApps = async () => {
         try {
@@ -115,6 +152,24 @@ function DistributorDashboard() {
             });
         } finally {
             setIsInserting(false);
+        }
+    };
+
+    const handleAppUserUpdate = async (appId, email, formData) => {
+        setIsUpdating(true);
+        try {
+            // Placeholder for actual update logic
+            console.log('Update app user:', { appId, email, formData });
+            setShowAppUserEditModal(false);
+            setSelectedAppUser(null);
+        } catch (error) {
+            console.error('Error updating app user:', error);
+            setPermanentMessage({
+                type: 'error',
+                content: 'Failed to update app user'
+            });
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -213,7 +268,65 @@ function DistributorDashboard() {
                         />
                     }
                 />
+
+                <PendingAppUsersGrid
+                    appUsers={pendingAppUsers}
+                    onAppUserClick={(appUser) => {
+                        setSelectedAppUser(appUser);
+                        setShowAppUserEditModal(true);
+                    }}
+                    onRefresh={() => fetchPendingAppUsers({
+                        appFilter,
+                        emailFilter,
+                        orderFilter: appUserOrderFilter,
+                        statusFilter: appUserStatusFilter,
+                        linkTypeFilter: appUserLinkTypeFilter
+                    })}
+                    appFilterImmediate={appFilterImmediate}
+                    emailFilterImmediate={emailFilterImmediate}
+                    orderFilterImmediate={appUserOrderFilterImmediate}
+                    statusFilter={appUserStatusFilter}
+                    linkTypeFilter={appUserLinkTypeFilter}
+                    onAppFilterChange={(e) => {
+                        setAppFilterImmediate(e.target.value);
+                        setAppFilterDebounced(e.target.value);
+                    }}
+                    onEmailFilterChange={(e) => {
+                        setEmailFilterImmediate(e.target.value);
+                        setEmailFilterDebounced(e.target.value);
+                    }}
+                    onOrderFilterChange={(e) => {
+                        setAppUserOrderFilterImmediate(e.target.value);
+                        setAppUserOrderFilterDebounced(e.target.value);
+                    }}
+                    onStatusFilterChange={(e) => setAppUserStatusFilter(e.target.value)}
+                    onLinkTypeFilterChange={(e) => setAppUserLinkTypeFilter(e.target.value)}
+                    currentPage={appUsersPage}
+                    itemsPerPage={itemsPerPage}
+                    isLoading={isRefreshingAppUsers}
+                    availableApps={apps}
+                    Pagination={
+                        <Pagination
+                            currentPage={appUsersPage}
+                            setCurrentPage={setAppUsersPage}
+                            totalItems={pendingAppUsers.length}
+                            itemsPerPage={itemsPerPage}
+                        />
+                    }
+                />
             </div>
+            {showAppUserEditModal && selectedAppUser && (
+                <AppUserEditModal
+                    appUser={selectedAppUser}
+                    onClose={() => {
+                        setShowAppUserEditModal(false);
+                        setSelectedAppUser(null);
+                    }}
+                    onSubmit={(formData) => handleAppUserUpdate(selectedAppUser.AppId, selectedAppUser.Email, formData)}
+                    isSubmitting={isUpdating}
+                    availableApps={apps}
+                />
+            )}
         </div>
     );
 }
