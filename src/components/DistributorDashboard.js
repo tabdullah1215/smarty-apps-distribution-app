@@ -5,6 +5,11 @@ import LinkGenerator from './LinkGenerator';
 import { useAppPurchaseLink } from '../hooks/useAppPurchaseLink';
 import authService from '../services/authService';
 import { API_ENDPOINT } from '../config';
+import InsertAppPurchaseOrder from './InsertAppPurchaseOrder';
+import { useAppPurchaseOrders } from '../hooks/useAppPurchaseOrders';
+import AppPurchaseOrderGrid from './AppPurchaseOrderGrid';
+import Pagination from './Pagination';
+import { useDebounce } from '../hooks/useDebounce';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -12,6 +17,17 @@ function DistributorDashboard() {
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [apps, setApps] = useState([]);
+    const [orderNumber, setOrderNumber] = useState('');
+    const [isInserting, setIsInserting] = useState(false);
+    const { purchaseOrders, isRefreshing, fetchPurchaseOrders } = useAppPurchaseOrders(setPermanentMessage);
+    const [ordersPage, setOrdersPage] = useState(1);
+    const [orderFilter, setOrderFilter] = useState('');
+    const [orderFilterImmediate, setOrderFilterImmediate] = useState('');
+    const setOrderFilterDebounced = useDebounce((value) => setOrderFilter(value), 500);
+    const [dateFilter, setDateFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const itemsPerPage = 10;
+
 
     const {
         uniquePurchaseLink,
@@ -28,6 +44,14 @@ function DistributorDashboard() {
     useEffect(() => {
         fetchAvailableApps();
     }, []);
+
+    useEffect(() => {
+        fetchPurchaseOrders({
+            orderFilter,
+            dateFilter,
+            statusFilter
+        });
+    }, [orderFilter, dateFilter, statusFilter]);
 
     const fetchAvailableApps = async () => {
         try {
@@ -57,6 +81,40 @@ function DistributorDashboard() {
             });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleOrderSubmit = async (e) => {
+        e.preventDefault();
+        setIsInserting(true);
+        try {
+            const token = authService.getToken();
+
+            await axios.post(
+                `${API_ENDPOINT}/create-distributor`,
+                { orderNumber },
+                {
+                    params: { action: 'insertAppPurchaseOrder' },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            setPermanentMessage({
+                type: 'success',
+                content: 'Order number inserted successfully'
+            });
+            setOrderNumber('');
+            fetchPurchaseOrders();
+        } catch (error) {
+            setPermanentMessage({
+                type: 'error',
+                content: error.response?.data?.message || 'Failed to insert order number'
+            });
+        } finally {
+            setIsInserting(false);
         }
     };
 
@@ -98,6 +156,7 @@ function DistributorDashboard() {
                     </div>
                 </div>
 
+
                 {selectedApp && (
                     <>
                         <LinkGenerator
@@ -120,6 +179,40 @@ function DistributorDashboard() {
                         />
                     </>
                 )}
+                <InsertAppPurchaseOrder
+                    orderNumber={orderNumber}
+                    onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
+                    onSubmit={handleOrderSubmit}
+                    isInserting={isInserting}
+                />
+                <AppPurchaseOrderGrid
+                    orders={purchaseOrders}
+                    onRefresh={() => fetchPurchaseOrders({
+                        orderFilter,
+                        dateFilter,
+                        statusFilter
+                    })}
+                    orderFilterImmediate={orderFilterImmediate}
+                    dateFilter={dateFilter}
+                    statusFilter={statusFilter}
+                    onOrderFilterChange={(e) => {
+                        setOrderFilterImmediate(e.target.value);
+                        setOrderFilterDebounced(e.target.value);
+                    }}
+                    onDateFilterChange={(e) => setDateFilter(e.target.value)}
+                    onStatusFilterChange={(e) => setStatusFilter(e.target.value)}
+                    currentPage={ordersPage}
+                    itemsPerPage={itemsPerPage}
+                    isLoading={isRefreshing}
+                    Pagination={
+                        <Pagination
+                            currentPage={ordersPage}
+                            setCurrentPage={setOrdersPage}
+                            totalItems={purchaseOrders.length}
+                            itemsPerPage={itemsPerPage}
+                        />
+                    }
+                />
             </div>
         </div>
     );
