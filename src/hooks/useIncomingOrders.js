@@ -1,9 +1,9 @@
-// hooks/useIncomingOrders.js
+
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { withMinimumDelay } from '../utils/withDelay';
-import authService from '../services/authService';  // Add this import
+import authService from '../services/authService';
 
 export const useIncomingOrders = (setPermanentMessage) => {
     const [incomingOrders, setIncomingOrders] = useState([]);
