@@ -24,7 +24,12 @@ const PendingAppUsersGrid = ({
     return (
         <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold min-w-[120px]">App Users</h2>
+                <div>
+                    <h2 className="text-xl font-semibold min-w-[120px]">App Users</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                        Showing {statusFilter === 'pending' ? 'pending' : 'all'} users
+                    </p>
+                </div>
                 <button
                     onClick={onRefresh}
                     disabled={isLoading}
@@ -65,12 +70,12 @@ const PendingAppUsersGrid = ({
                 <select
                     value={statusFilter}
                     onChange={onStatusFilterChange}
-                    className="p-2 border rounded"
+                    className="p-2 border rounded font-medium"
                 >
+                    <option value="pending" className="font-medium">Pending Users</option>
                     <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active">Active Users</option>
+                    <option value="inactive">Inactive Users</option>
                 </select>
                 <select
                     value={linkTypeFilter}
@@ -114,6 +119,11 @@ const PendingAppUsersGrid = ({
                         ))}
                     </tbody>
                 </table>
+                {appUsers.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                        No {statusFilter === 'pending' ? 'pending' : ''} app users found
+                    </div>
+                )}
             </div>
             {Pagination}
         </div>
