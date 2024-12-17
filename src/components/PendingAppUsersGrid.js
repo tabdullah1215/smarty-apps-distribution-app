@@ -121,7 +121,12 @@ const PendingAppUsersGrid = ({
                 </table>
                 {appUsers.length === 0 && (
                     <div className="text-center py-4 text-gray-500">
-                        No {statusFilter === 'pending' ? 'pending' : ''} app users found
+                        No app users found
+                        {statusFilter && ` with status: ${statusFilter}`}
+                        {linkTypeFilter && ` and link type: ${linkTypeFilter}`}
+                        {appFilterImmediate && ` for app: ${availableApps.find(app => app.AppId === appFilterImmediate)?.Name}`}
+                        {emailFilterImmediate && ` matching email: ${emailFilterImmediate}`}
+                        {orderFilterImmediate && ` with order: ${orderFilterImmediate}`}
                     </div>
                 )}
             </div>
