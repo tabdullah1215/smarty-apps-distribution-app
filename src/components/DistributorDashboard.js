@@ -13,6 +13,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { usePendingAppUsers } from '../hooks/usePendingAppUsers';
 import PendingAppUsersGrid from './PendingAppUsersGrid';
 import AppUserEditModal from './AppUserEditModal';
+import { useAppUserUpdate } from '../hooks/useAppUserUpdate';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -41,13 +42,10 @@ function DistributorDashboard() {
     const [selectedAppUser, setSelectedAppUser] = useState(null);
     const [showAppUserEditModal, setShowAppUserEditModal] = useState(false);
     const [appUserLinkTypeFilter, setAppUserLinkTypeFilter] = useState('');
-    const [isUpdating, setIsUpdating] = useState(false);
 
-// Add debounced setters
     const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
-
 
     const {
         uniquePurchaseLink,
@@ -62,9 +60,21 @@ function DistributorDashboard() {
     } = useAppPurchaseLink(setPermanentMessage);
 
     const {
+        handleAppUserUpdate: updateAppUser,
+        isUpdating: isAppUserUpdating
+    } = useAppUserUpdate(
+        (message, updatedData) => {
+            setPermanentMessage({ type: 'success', content: message });
+            fetchPendingAppUsers();
+        },
+        (errorMessage) => {
+            setPermanentMessage({ type: 'error', content: errorMessage });
+        }
+    );
+
+    const {
         pendingAppUsers,
         isRefreshing: isRefreshingAppUsers,
-        isSyncing: isSyncingAppUsers,
         fetchPendingAppUsers
     } = usePendingAppUsers(setPermanentMessage);
 
@@ -97,7 +107,7 @@ function DistributorDashboard() {
 
             const response = await axios.post(
                 `${API_ENDPOINT}/create-distributor`,
-                {},  // empty body since it's using query params
+                {},
                 {
                     params: { action: 'fetchAvailableApps' },
                     headers: {
@@ -155,24 +165,6 @@ function DistributorDashboard() {
         }
     };
 
-    const handleAppUserUpdate = async (appId, email, formData) => {
-        setIsUpdating(true);
-        try {
-            // Placeholder for actual update logic
-            console.log('Update app user:', { appId, email, formData });
-            setShowAppUserEditModal(false);
-            setSelectedAppUser(null);
-        } catch (error) {
-            console.error('Error updating app user:', error);
-            setPermanentMessage({
-                type: 'error',
-                content: 'Failed to update app user'
-            });
-        } finally {
-            setIsUpdating(false);
-        }
-    };
-
     return (
         <div className="min-h-screen bg-gray-200">
             <DashboardHeader
@@ -211,7 +203,6 @@ function DistributorDashboard() {
                     </div>
                 </div>
 
-
                 {selectedApp && (
                     <>
                         <LinkGenerator
@@ -234,12 +225,14 @@ function DistributorDashboard() {
                         />
                     </>
                 )}
+
                 <InsertAppPurchaseOrder
                     orderNumber={orderNumber}
                     onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
                     onSubmit={handleOrderSubmit}
                     isInserting={isInserting}
                 />
+
                 <AppPurchaseOrderGrid
                     orders={purchaseOrders}
                     onRefresh={() => fetchPurchaseOrders({
@@ -315,6 +308,7 @@ function DistributorDashboard() {
                     }
                 />
             </div>
+
             {showAppUserEditModal && selectedAppUser && (
                 <AppUserEditModal
                     appUser={selectedAppUser}
@@ -322,8 +316,8 @@ function DistributorDashboard() {
                         setShowAppUserEditModal(false);
                         setSelectedAppUser(null);
                     }}
-                    onSubmit={(formData) => handleAppUserUpdate(selectedAppUser.AppId, selectedAppUser.Email, formData)}
-                    isSubmitting={isUpdating}
+                    onSubmit={(formData) => updateAppUser(selectedAppUser.AppId, selectedAppUser.Email, formData)}
+                    isSubmitting={isAppUserUpdating}
                     availableApps={apps}
                 />
             )}
