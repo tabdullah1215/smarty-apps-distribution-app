@@ -65,7 +65,15 @@ function DistributorDashboard() {
     } = useAppUserUpdate(
         (message, updatedData) => {
             setPermanentMessage({ type: 'success', content: message });
-            fetchPendingAppUsers();
+            setShowAppUserEditModal(false);
+            setSelectedAppUser(null);
+            fetchPendingAppUsers({
+                appFilter,
+                emailFilter,
+                orderFilter: appUserOrderFilter,
+                statusFilter: appUserStatusFilter,
+                linkTypeFilter: appUserLinkTypeFilter
+            });
         },
         (errorMessage) => {
             setPermanentMessage({ type: 'error', content: errorMessage });
