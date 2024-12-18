@@ -105,7 +105,10 @@ const AppUserEditModal = ({ appUser, onClose, onSubmit, isSubmitting = false, av
                         Cancel
                     </button>
                     <button
-                        onClick={() => onSubmit(formData)}
+                        onClick={async (e) => {
+                            e.preventDefault();
+                            await onSubmit(formData);
+                        }}
                         disabled={isSubmitting || Object.keys(formData).every(key => formData[key] === appUser[key])}
                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
                     >

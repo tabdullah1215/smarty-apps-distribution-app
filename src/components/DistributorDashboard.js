@@ -324,7 +324,9 @@ function DistributorDashboard() {
                         setShowAppUserEditModal(false);
                         setSelectedAppUser(null);
                     }}
-                    onSubmit={(formData) => updateAppUser(selectedAppUser.AppId, selectedAppUser.Email, formData)}
+                    onSubmit={async (formData) => {
+                        await updateAppUser(selectedAppUser.AppId, selectedAppUser.Email, formData);
+                    }}
                     isSubmitting={isAppUserUpdating}
                     availableApps={apps}
                 />
