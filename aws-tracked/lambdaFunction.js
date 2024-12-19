@@ -43,6 +43,87 @@ function generateToken(user) {
     );
 }
 
+async function handleUpdateAppUser(body) {
+    try {
+        if (!body.appId || !body.email) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'App ID and email are required'
+            });
+        }
+
+        // First get the current user state
+        const currentUser = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppUsers',
+            Key: {
+                AppId: body.appId,
+                Email: body.email
+            }
+        }));
+
+        if (!currentUser.Item) {
+            return createResponse(404, {
+                code: 'USER_NOT_FOUND',
+                message: 'App user not found'
+            });
+        }
+
+        // Status change validation
+        if (body.status === 'active' &&
+            currentUser.Item.LinkType === 'generic' &&
+            currentUser.Item.Status === 'pending') {
+            return createResponse(400, {
+                code: 'INVALID_STATUS_CHANGE',
+                message: 'Generic registrations must be activated through order validation'
+            });
+        }
+
+        const updateExpressions = [];
+        const expressionAttributeNames = {};
+        const expressionAttributeValues = {};
+
+        // Map of fields that can be updated
+        const updatableFields = {
+            status: 'Status'
+        };
+
+        // Build update expression for each field that has a value
+        Object.entries(updatableFields).forEach(([key, dbField]) => {
+            if (body[key] !== undefined) {
+                updateExpressions.push(`#${key} = :${key}`);
+                expressionAttributeNames[`#${key}`] = dbField;
+                expressionAttributeValues[`:${key}`] = body[key];
+            }
+        });
+
+        if (updateExpressions.length === 0) {
+            return createResponse(400, { message: 'No fields to update' });
+        }
+
+        // Update the app user
+        const result = await ddbDocClient.send(new UpdateCommand({
+            TableName: 'AppUsers',
+            Key: {
+                AppId: body.appId,
+                Email: body.email
+            },
+            UpdateExpression: 'SET ' + updateExpressions.join(', '),
+            ExpressionAttributeNames: expressionAttributeNames,
+            ExpressionAttributeValues: expressionAttributeValues,
+            ReturnValues: 'ALL_NEW'
+        }));
+
+        return createResponse(200, {
+            message: 'App user updated successfully',
+            appId: body.appId,
+            email: body.email,
+            updatedUser: result.Attributes
+        });
+    } catch (error) {
+        console.error('Error updating app user:', error);
+        return handleLambdaError(error, 'handleUpdateAppUser');
+    }
+}
 async function handleGetPendingAppUsers(event) {
     try {
         const decodedToken = await verifyAuthToken(event);
@@ -887,6 +968,8 @@ exports.handler = async (event) => {
                 return await handleFetchAppPurchaseOrders(event);
             case 'getPendingAppUsers':
                 return await handleGetPendingAppUsers(event);
+            case 'updateAppUser':
+                return await handleUpdateAppUser(body);
             default:
                 return createResponse(400, {
                     code: 'INVALID_ACTION', // Added error code
