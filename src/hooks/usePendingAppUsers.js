@@ -7,23 +7,20 @@ import authService from '../services/authService';
 export const usePendingAppUsers = (setPermanentMessage) => {
     const [pendingAppUsers, setPendingAppUsers] = useState([]);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
 
     const fetchPendingAppUsers = async ({
                                             appFilter = '',
                                             emailFilter = '',
                                             orderFilter = '',
                                             dateFilter = '',
-                                            statusFilter = ''
+                                            statusFilter = '',
+                                            linkTypeFilter = ''  // Make sure linkTypeFilter is included
                                         } = {}, isFromSync = false) => {
-        if (isFromSync) {
-            setIsSyncing(true);
-        } else {
-            setIsRefreshing(true);
-        }
+        setIsRefreshing(true);
 
         try {
             const token = authService.getToken();
+            console.log('Fetching with filters:', { appFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter }); // Debug log
 
             const response = await withMinimumDelay(async () => {
                 return await axios.post(
@@ -36,7 +33,8 @@ export const usePendingAppUsers = (setPermanentMessage) => {
                             emailFilter,
                             orderFilter,
                             dateFilter,
-                            statusFilter
+                            statusFilter,
+                            linkTypeFilter  // Add to params
                         },
                         headers: {
                             'Content-Type': 'application/json',
@@ -57,18 +55,13 @@ export const usePendingAppUsers = (setPermanentMessage) => {
                 content: 'Failed to fetch pending app users'
             });
         } finally {
-            if (isFromSync) {
-                setIsSyncing(false);
-            } else {
-                setIsRefreshing(false);
-            }
+            setIsRefreshing(false);
         }
     };
 
     return {
         pendingAppUsers,
         isRefreshing,
-        isSyncing,
         fetchPendingAppUsers
     };
 };

@@ -99,6 +99,13 @@ function DistributorDashboard() {
     }, [orderFilter, dateFilter, statusFilter]);
 
     useEffect(() => {
+        console.log('Filters changed:', {
+            appFilter,
+            emailFilter,
+            appUserOrderFilter,
+            appUserStatusFilter,
+            appUserLinkTypeFilter
+        });
         fetchPendingAppUsers({
             appFilter,
             emailFilter,
@@ -301,7 +308,10 @@ function DistributorDashboard() {
                         setAppUserOrderFilterDebounced(e.target.value);
                     }}
                     onStatusFilterChange={(e) => setAppUserStatusFilter(e.target.value)}
-                    onLinkTypeFilterChange={(e) => setAppUserLinkTypeFilter(e.target.value)}
+                    onLinkTypeFilterChange={(e) => {
+                        console.log('Link type filter changed:', e.target.value); // Debug log
+                        setAppUserLinkTypeFilter(e.target.value);
+                    }}
                     currentPage={appUsersPage}
                     itemsPerPage={itemsPerPage}
                     isLoading={isRefreshingAppUsers}
