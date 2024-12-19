@@ -14,6 +14,8 @@ import { usePendingAppUsers } from '../hooks/usePendingAppUsers';
 import PendingAppUsersGrid from './PendingAppUsersGrid';
 import AppUserEditModal from './AppUserEditModal';
 import { useAppUserUpdate } from '../hooks/useAppUserUpdate';
+import SyncAppUsersAndOrders from './SyncAppUsersAndOrders';
+import { useSyncAppUsersAndOrders } from '../hooks/useSyncAppUsersAndOrders';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -46,6 +48,26 @@ function DistributorDashboard() {
     const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
+
+    const { syncAppUsersAndOrders, isSyncing: isSyncingUsers } = useSyncAppUsersAndOrders(
+        setPermanentMessage,
+        async (isFromSync) => {
+            await Promise.all([
+                fetchPendingAppUsers({
+                    appFilter,
+                    emailFilter,
+                    orderFilter: appUserOrderFilter,
+                    statusFilter: appUserStatusFilter,
+                    linkTypeFilter: appUserLinkTypeFilter
+                }, isFromSync),
+                fetchPurchaseOrders({
+                    orderFilter,
+                    dateFilter,
+                    statusFilter
+                }, isFromSync)
+            ]);
+        }
+    );
 
     const {
         uniquePurchaseLink,
@@ -246,6 +268,11 @@ function DistributorDashboard() {
                     onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
                     onSubmit={handleOrderSubmit}
                     isInserting={isInserting}
+                />
+
+                <SyncAppUsersAndOrders
+                    onSync={syncAppUsersAndOrders}
+                    isSyncing={isSyncingUsers}
                 />
 
                 <AppPurchaseOrderGrid
