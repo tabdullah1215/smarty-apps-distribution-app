@@ -124,6 +124,7 @@ async function handleUpdateAppUser(body) {
         return handleLambdaError(error, 'handleUpdateAppUser');
     }
 }
+
 async function handleGetPendingAppUsers(event) {
     try {
         const decodedToken = await verifyAuthToken(event);
@@ -135,7 +136,7 @@ async function handleGetPendingAppUsers(event) {
         }
 
         console.log('Fetching pending app users');
-        const { appFilter, emailFilter, orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
+        const { appFilter, emailFilter, orderFilter, dateFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
 
         let filterExpression = ['DistributorId = :distributorId'];
         let expressionAttributeNames = {};
@@ -169,6 +170,11 @@ async function handleGetPendingAppUsers(event) {
             expressionAttributeValues[':statusFilter'] = statusFilter;
         }
 
+        if (linkTypeFilter) {
+            filterExpression.push('LinkType = :linkTypeFilter');
+            expressionAttributeValues[':linkTypeFilter'] = linkTypeFilter;
+        }
+
         const scanParams = {
             TableName: 'AppUsers',
             FilterExpression: filterExpression.join(' AND '),
@@ -176,6 +182,7 @@ async function handleGetPendingAppUsers(event) {
             ExpressionAttributeValues: expressionAttributeValues
         };
 
+        console.log('Scan params:', JSON.stringify(scanParams, null, 2)); // Added for debugging
         const scanResult = await ddbDocClient.send(new ScanCommand(scanParams));
 
         console.log('App users fetched:', scanResult.Items.length);
@@ -185,7 +192,6 @@ async function handleGetPendingAppUsers(event) {
         return createResponse(500, { message: 'Error fetching app users', error: error.message });
     }
 }
-
 async function handleFetchAvailableApps(event) {
     try {
         console.log('Processing fetchAvailableApps request');
