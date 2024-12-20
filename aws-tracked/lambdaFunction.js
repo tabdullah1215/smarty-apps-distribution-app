@@ -125,6 +125,101 @@ async function handleUpdateAppUser(body) {
     }
 }
 
+async function handleSyncAppUsers(event) {
+    try {
+        // 1. Auth verification (matching other handlers)
+        const decodedToken = await verifyAuthToken(event);
+        if (!decodedToken || decodedToken.role !== 'Distributor') {
+            return createResponse(401, {
+                code: 'UNAUTHORIZED',
+                message: 'Valid distributor authentication required'
+            });
+        }
+
+        // 2. Get pending orders for this distributor
+        const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: '(attribute_not_exists(#status) OR #status = :pendingStatus) AND DistributorId = :distributorId',
+            ExpressionAttributeNames: { '#status': 'Status' },
+            ExpressionAttributeValues: {
+                ':pendingStatus': 'pending',
+                ':distributorId': decodedToken.sub
+            }
+        }));
+
+        // 3. Get pending users for this distributor
+        const pendingUsersResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppUsers',
+            FilterExpression: '#status = :pendingStatus AND DistributorId = :distributorId',
+            ExpressionAttributeNames: { '#status': 'Status' },
+            ExpressionAttributeValues: {
+                ':pendingStatus': 'pending',
+                ':distributorId': decodedToken.sub
+            }
+        }));
+
+        const transactItems = [];
+        let matchedPairs = 0;
+
+        for (const order of pendingOrdersResult.Items) {
+            const matchingUser = pendingUsersResult.Items.find(
+                user => user.OrderNumber === order.OrderNumber
+            );
+
+            if (matchingUser) {
+                transactItems.push({
+                    Update: {
+                        TableName: 'AppPurchaseOrders',
+                        Key: { OrderNumber: order.OrderNumber },
+                        UpdateExpression: 'SET #status = :usedStatus',
+                        ExpressionAttributeNames: { '#status': 'Status' },
+                        ExpressionAttributeValues: { ':usedStatus': 'used' }
+                    }
+                });
+
+                transactItems.push({
+                    Update: {
+                        TableName: 'AppUsers',
+                        Key: {
+                            AppId: matchingUser.AppId,
+                            Email: matchingUser.Email
+                        },
+                        UpdateExpression: 'SET #status = :activeStatus',
+                        ExpressionAttributeNames: { '#status': 'Status' },
+                        ExpressionAttributeValues: { ':activeStatus': 'active' }
+                    }
+                });
+
+                matchedPairs++;
+
+                if (transactItems.length === 25) {
+                    await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+                    transactItems.length = 0;
+                }
+            }
+        }
+
+        if (transactItems.length > 0) {
+            await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
+        }
+
+        // 4. Enhanced response with detailed stats
+        return createResponse(200, {
+            code: 'SYNC_SUCCESS',
+            message: `Sync completed. Updated ${matchedPairs} pairs.`,
+            stats: {
+                processedOrders: pendingOrdersResult.Items.length,
+                processedUsers: pendingUsersResult.Items.length,
+                matchedPairs: matchedPairs
+            }
+        });
+
+    } catch (error) {
+        console.error('Error syncing app users:', error);
+        return handleLambdaError(error, 'handleSyncAppUsers');
+    }
+}
+
 async function handleGetPendingAppUsers(event) {
     try {
         const decodedToken = await verifyAuthToken(event);
@@ -536,73 +631,6 @@ async function handleInsertAppPurchaseOrder(body, event) {
     }
 }
 
-async function handleSyncAppUsers() {
-    try {
-        const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
-            TableName: 'AppPurchaseOrders',
-            FilterExpression: 'attribute_not_exists(#status) OR #status = :pendingStatus',
-            ExpressionAttributeNames: { '#status': 'Status' },
-            ExpressionAttributeValues: { ':pendingStatus': 'pending' }
-        }));
-
-        const pendingUsersResult = await ddbDocClient.send(new ScanCommand({
-            TableName: 'AppUsers',
-            FilterExpression: '#status = :pendingStatus',
-            ExpressionAttributeNames: { '#status': 'Status' },
-            ExpressionAttributeValues: { ':pendingStatus': 'pending' }
-        }));
-
-        const transactItems = [];
-
-        for (const order of pendingOrdersResult.Items) {
-            const matchingUser = pendingUsersResult.Items.find(
-                user => user.OrderNumber === order.OrderNumber
-            );
-
-            if (matchingUser) {
-                transactItems.push({
-                    Update: {
-                        TableName: 'AppPurchaseOrders',
-                        Key: { OrderNumber: order.OrderNumber },
-                        UpdateExpression: 'SET #status = :usedStatus',
-                        ExpressionAttributeNames: { '#status': 'Status' },
-                        ExpressionAttributeValues: { ':usedStatus': 'used' }
-                    }
-                });
-
-                transactItems.push({
-                    Update: {
-                        TableName: 'AppUsers',
-                        Key: {
-                            AppId: matchingUser.AppId,
-                            Email: matchingUser.Email
-                        },
-                        UpdateExpression: 'SET #status = :activeStatus',
-                        ExpressionAttributeNames: { '#status': 'Status' },
-                        ExpressionAttributeValues: { ':activeStatus': 'active' }
-                    }
-                });
-
-                if (transactItems.length === 25) {
-                    await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
-                    transactItems.length = 0;
-                }
-            }
-        }
-
-        if (transactItems.length > 0) {
-            await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
-        }
-
-        return createResponse(200, {
-            message: `Sync completed. Updated ${transactItems.length / 2} pairs.`
-        });
-
-    } catch (error) {
-        console.error('Error syncing app users:', error);
-        return handleLambdaError(error, 'handleSyncAppUsers');
-    }
-}
 async function handleVerifyAppPurchase(body) {
     console.log('Processing app purchase verification');
     try {
@@ -967,7 +995,7 @@ exports.handler = async (event) => {
             case 'appLogin':
                 return await handleAppLogin(body);
             case 'syncAppUsers':
-                return await handleSyncAppUsers();
+                return await handleSyncAppUsers(event);
             case 'insertAppPurchaseOrder':
                 return await handleInsertAppPurchaseOrder(body, event);
             case 'getAppPurchaseOrders':
