@@ -22,6 +22,33 @@ const headers = {
     "Expires": "0"
 };
 
+const actionConfig = {
+    // Public actions (no auth required)
+    verifyCredentials: { public: true },
+    verifyAppPurchase: { public: true },
+    registerDistributor: { public: true },
+    verifyToken: { public: true },
+    appLogin: { public: true },
+
+    // Owner only actions
+    syncOrdersAndDistributors: { role: 'Owner' },
+    getDistributors: { role: 'Owner' },
+    getIncomingOrders: { role: 'Owner' },
+    bulkInsertOrders: { role: 'Owner' },
+    updateDistributor: { role: 'Owner' },
+    generateToken: { role: 'Owner' },
+    insertOrder: { role: 'Owner' },
+
+    // Distributor only actions
+    syncAppUsers: { role: 'Distributor' },
+    getPendingAppUsers: { role: 'Distributor' },
+    fetchAvailableApps: { role: 'Distributor' },
+    generatePurchaseToken: { role: 'Distributor' },
+    insertAppPurchaseOrder: { role: 'Distributor' },
+    getAppPurchaseOrders: { role: 'Distributor' },
+    updateAppUser: { role: 'Distributor' }
+};
+
 // Password hashing utilities
 // async function hashPassword(password) {
 //     return bcrypt.hash(password, SALT_ROUNDS);
@@ -43,7 +70,7 @@ function generateToken(user) {
     );
 }
 
-async function handleUpdateAppUser(body) {
+async function handleUpdateAppUser(body, event) {
     try {
         if (!body.appId || !body.email) {
             return createResponse(400, {
@@ -51,6 +78,8 @@ async function handleUpdateAppUser(body) {
                 message: 'App ID and email are required'
             });
         }
+
+        const distributorId = event.user.sub;
 
         // First get the current user state
         const currentUser = await ddbDocClient.send(new GetCommand({
@@ -65,6 +94,13 @@ async function handleUpdateAppUser(body) {
             return createResponse(404, {
                 code: 'USER_NOT_FOUND',
                 message: 'App user not found'
+            });
+        }
+
+        if (currentUser.Item.DistributorId !== distributorId) {
+            return createResponse(403, {
+                code: 'FORBIDDEN',
+                message: 'Cannot update app users belonging to other distributors'
             });
         }
 
@@ -128,22 +164,17 @@ async function handleUpdateAppUser(body) {
 async function handleSyncAppUsers(event) {
     try {
         // 1. Auth verification (matching other handlers)
-        const decodedToken = await verifyAuthToken(event);
-        if (!decodedToken || decodedToken.role !== 'Distributor') {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Valid distributor authentication required'
-            });
-        }
+        // removed
 
         // 2. Get pending orders for this distributor
+        const distributorId = event.user.sub;
         const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'AppPurchaseOrders',
             FilterExpression: '(attribute_not_exists(#status) OR #status = :pendingStatus) AND DistributorId = :distributorId',
             ExpressionAttributeNames: { '#status': 'Status' },
             ExpressionAttributeValues: {
                 ':pendingStatus': 'pending',
-                ':distributorId': decodedToken.sub
+                ':distributorId': distributorId
             }
         }));
 
@@ -154,7 +185,7 @@ async function handleSyncAppUsers(event) {
             ExpressionAttributeNames: { '#status': 'Status' },
             ExpressionAttributeValues: {
                 ':pendingStatus': 'pending',
-                ':distributorId': decodedToken.sub
+                ':distributorId': distributorId
             }
         }));
 
@@ -222,13 +253,8 @@ async function handleSyncAppUsers(event) {
 
 async function handleGetPendingAppUsers(event) {
     try {
-        const decodedToken = await verifyAuthToken(event);
-        if (!decodedToken) {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Authentication required to access this resource'
-            });
-        }
+
+        const distributorId = event.user.sub;
 
         console.log('Fetching pending app users');
         const { appFilter, emailFilter, orderFilter, dateFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
@@ -236,7 +262,7 @@ async function handleGetPendingAppUsers(event) {
         let filterExpression = ['DistributorId = :distributorId'];
         let expressionAttributeNames = {};
         let expressionAttributeValues = {
-            ':distributorId': decodedToken.sub
+            ':distributorId': distributorId
         };
 
         if (appFilter) {
@@ -292,23 +318,14 @@ async function handleFetchAvailableApps(event) {
         console.log('Processing fetchAvailableApps request');
         console.log('Auth header:', event.headers.Authorization);
 
-        const decodedToken = await verifyAuthToken(event);
-        console.log('Decoded token:', decodedToken);
-
-        if (!decodedToken || decodedToken.role !== 'Distributor') {
-            console.log('Auth failed - Token:', decodedToken);
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Authentication required'
-            });
-        }
+        const distributorId = event.user.sub;
 
         // Get apps assigned to this distributor
         const distributorAppsResult = await ddbDocClient.send(new QueryCommand({
             TableName: 'DistributorApps',
             KeyConditionExpression: 'DistributorId = :distributorId',
             ExpressionAttributeValues: {
-                ':distributorId': decodedToken.sub
+                ':distributorId': distributorId
             }
         }));
 
@@ -365,18 +382,12 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
             });
         }
 
-        // Verify auth using the same method as other endpoints
-        const decodedToken = await verifyAuthToken(event);
-        console.log('Token verification result:', {
-            hasToken: !!decodedToken,
-            tokenRole: decodedToken?.role,
-            tokenSub: decodedToken?.sub
-        });
+        const distributorId = event.user.sub;
 
-        if (!decodedToken || decodedToken.role !== 'Distributor' || decodedToken.sub !== body.distributorId) {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Valid distributor authentication required'
+        if (distributorId !== body.distributorId) {
+            return createResponse(403, {
+                code: 'FORBIDDEN',
+                message: 'Cannot generate token for another distributor'
             });
         }
 
@@ -524,13 +535,8 @@ async function handleAppLogin(body) {
 
 async function handleFetchAppPurchaseOrders(event) {
     try {
-        const decodedToken = await verifyAuthToken(event);
-        if (!decodedToken) {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Authentication required to access this resource'
-            });
-        }
+
+        const distributorId = event.user.sub;
 
         console.log('Fetching app purchase orders');
         const { orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
@@ -538,7 +544,7 @@ async function handleFetchAppPurchaseOrders(event) {
         let filterExpression = ['DistributorId = :distributorId'];
         let expressionAttributeNames = {};
         let expressionAttributeValues = {
-            ':distributorId': decodedToken.sub  // Add this line
+            ':distributorId': distributorId
         };
 
         if (orderFilter) {
@@ -581,14 +587,6 @@ async function handleInsertAppPurchaseOrder(body, event) {
             return createResponse(400, { message: 'Order number is required' });
         }
 
-        const decodedToken = await verifyAuthToken(event);
-        if (!decodedToken || decodedToken.role !== 'Distributor') {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Valid distributor authentication required'
-            });
-        }
-
         let sanitizedOrderNumber;
         try {
             sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
@@ -611,13 +609,14 @@ async function handleInsertAppPurchaseOrder(body, event) {
             });
         }
 
+        let distributorId = event.user.sub;
         await ddbDocClient.send(new PutCommand({
             TableName: 'AppPurchaseOrders',
             Item: {
                 OrderNumber: sanitizedOrderNumber,
                 CreatedAt: new Date().toISOString(),
                 Status: 'pending',
-                DistributorId: decodedToken.sub
+                DistributorId: distributorId
             }
         }));
 
@@ -935,6 +934,7 @@ async function handleVerifyToken(event) {
     }
 }
 
+
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
 
@@ -942,14 +942,45 @@ exports.handler = async (event) => {
         return createResponse(200, {});
     }
 
+    let currentAction = '';
+
     try {
         const action = event.queryStringParameters?.action;
+        currentAction = action;
 
         if (!action) {
             return createResponse(400, {
-                code: 'MISSING_ACTION',     // Added error code
+                code: 'MISSING_ACTION',
                 message: 'Missing action parameter'
             });
+        }
+
+        const config = actionConfig[action];
+        if (!config) {
+            return createResponse(400, {
+                code: 'INVALID_ACTION',
+                message: 'Invalid action parameter'
+            });
+        }
+
+        let decodedToken;
+        // Auth check for non-public actions
+        if (!config.public) {
+            decodedToken = await verifyAuthToken(event);
+            if (!decodedToken) {
+                return createResponse(401, {
+                    code: 'UNAUTHORIZED',
+                    message: 'Authentication required'
+                });
+            }
+
+            // Role check
+            if (config.role && decodedToken.role !== config.role) {
+                return createResponse(403, {
+                    code: 'FORBIDDEN',
+                    message: `This action requires ${config.role} role`
+                });
+            }
         }
 
         let body = {};
@@ -958,65 +989,71 @@ exports.handler = async (event) => {
                 body = JSON.parse(event.body || '{}');
             } catch (error) {
                 return createResponse(400, {
-                    code: 'INVALID_JSON',   // Added error code
+                    code: 'INVALID_JSON',
                     message: 'Invalid JSON in request body'
                 });
             }
-            console.log('Parsed body:', JSON.stringify(body, null, 2));
         }
 
+        // Attach auth info to event if authenticated
+        if (decodedToken) {
+            event.user = decodedToken;
+        }
+
+        // Handle actions
         switch (action) {
+            // Public actions
             case 'verifyCredentials':
                 return await handleVerifyCredentials(body);
-            case 'verifyToken':
-                return await handleVerifyToken(event);
-            case 'insertOrder':
-                return await handleInsertOrder(body);
-            case 'generateToken':
-                return await handleGenerateToken(body);
-            case 'registerDistributor':
-                return await handleRegisterDistributor(body);
-            case 'syncOrdersAndDistributors':
-                return await handleSyncOrdersAndDistributors();
-            case 'getIncomingOrders':
-                return await handleFetchIncomingOrders(event);
-            case 'getDistributors':
-                return await handleFetchPendingDistributors(event);
-            case 'bulkInsertOrders':
-                return await handleBulkInsertOrders(body);
-            case 'updateDistributor':
-                return await handleUpdateDistributor(body);
-            case 'generatePurchaseToken':
-                return await handleGenerateAppPurchaseToken(body, event);
             case 'verifyAppPurchase':
                 return await handleVerifyAppPurchase(body);
-            case 'fetchAvailableApps':
-                return await handleFetchAvailableApps(event);
+            case 'registerDistributor':
+                return await handleRegisterDistributor(body);
+            case 'verifyToken':
+                return await handleVerifyToken(event);
             case 'appLogin':
                 return await handleAppLogin(body);
+
+            // Owner actions
+            case 'syncOrdersAndDistributors':
+                return await handleSyncOrdersAndDistributors(event);
+            case 'getDistributors':
+                return await handleFetchPendingDistributors(event);
+            case 'getIncomingOrders':
+                return await handleFetchIncomingOrders(event);
+            case 'bulkInsertOrders':
+                return await handleBulkInsertOrders(body, event);
+            case 'updateDistributor':
+                return await handleUpdateDistributor(body, event);
+            case 'generateToken':
+                return await handleGenerateToken(body, event);
+            case 'insertOrder':
+                return await handleInsertOrder(body, event);
+
+            // Distributor actions
             case 'syncAppUsers':
                 return await handleSyncAppUsers(event);
+            case 'getPendingAppUsers':
+                return await handleGetPendingAppUsers(event);
+            case 'fetchAvailableApps':
+                return await handleFetchAvailableApps(event);
+            case 'generatePurchaseToken':
+                return await handleGenerateAppPurchaseToken(body, event);
             case 'insertAppPurchaseOrder':
                 return await handleInsertAppPurchaseOrder(body, event);
             case 'getAppPurchaseOrders':
                 return await handleFetchAppPurchaseOrders(event);
-            case 'getPendingAppUsers':
-                return await handleGetPendingAppUsers(event);
             case 'updateAppUser':
-                return await handleUpdateAppUser(body);
+                return await handleUpdateAppUser(body, event);
+
             default:
                 return createResponse(400, {
-                    code: 'INVALID_ACTION', // Added error code
+                    code: 'INVALID_ACTION',
                     message: 'Invalid action'
                 });
         }
     } catch (error) {
-        // Use the new error handling utility
-        return handleLambdaError({
-            ...error,
-            code: error.code || 'INTERNAL_SERVER_ERROR',
-            message: error.message || 'An unexpected error occurred'
-        }, 'handler');
+        return handleLambdaError(error, currentAction);
     }
 };
 
@@ -1535,15 +1572,6 @@ async function handleSyncOrdersAndDistributors() {
 }
 async function handleFetchIncomingOrders(event) {
     try {
-
-        const decodedToken = await verifyAuthToken(event);
-        if (!decodedToken) {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Authentication required to access this resource'
-            });
-        }
-
         console.log('Fetching incoming orders');
         const { orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
 
@@ -1585,15 +1613,6 @@ async function handleFetchIncomingOrders(event) {
 }
 async function handleFetchPendingDistributors(event) {
     try {
-
-        const decodedToken = await verifyAuthToken(event);
-        if (!decodedToken) {
-            return createResponse(401, {
-                code: 'UNAUTHORIZED',
-                message: 'Authentication required to access this resource'
-            });
-        }
-
         console.log('Fetching distributors');
         const { nameFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
 
