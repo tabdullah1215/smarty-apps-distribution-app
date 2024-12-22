@@ -194,14 +194,18 @@ async function handleSyncAppUsers(event) {
 
         for (const order of pendingOrdersResult.Items) {
             const matchingUser = pendingUsersResult.Items.find(
-                user => user.OrderNumber === order.OrderNumber
+                user => user.OrderNumber === order.OrderNumber &&
+                    user.DistributorId === order.DistributorId
             );
 
             if (matchingUser) {
                 transactItems.push({
                     Update: {
                         TableName: 'AppPurchaseOrders',
-                        Key: { OrderNumber: order.OrderNumber },
+                        Key: {
+                            DistributorId: order.DistributorId,
+                            OrderNumber: order.OrderNumber
+                        },
                         UpdateExpression: 'SET #status = :usedStatus',
                         ExpressionAttributeNames: { '#status': 'Status' },
                         ExpressionAttributeValues: { ':usedStatus': 'used' }
@@ -584,48 +588,93 @@ async function handleInsertAppPurchaseOrder(body, event) {
     console.log('Processing insert app purchase order request');
     try {
         if (!body.orderNumber) {
-            return createResponse(400, { message: 'Order number is required' });
+            return createResponse(400, {
+                code: 'MISSING_ORDER_NUMBER',
+                message: 'Order number is required'
+            });
         }
 
         let sanitizedOrderNumber;
         try {
             sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
         } catch (sanitizationError) {
-            return createResponse(400, { message: sanitizationError.message });
+            return createResponse(400, {
+                code: 'INVALID_ORDER_NUMBER',
+                message: sanitizationError.message
+            });
         }
 
+        let distributorId = event.user.sub;
+
+        // First check for duplicate within distributor scope
         const scanResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'AppPurchaseOrders',
-            FilterExpression: 'OrderNumber = :orderNumber',
+            FilterExpression: 'OrderNumber = :orderNumber AND DistributorId = :distributorId',
             ExpressionAttributeValues: {
-                ':orderNumber': sanitizedOrderNumber
+                ':orderNumber': sanitizedOrderNumber,
+                ':distributorId': distributorId
             }
         }));
 
         if (scanResult.Items && scanResult.Items.length > 0) {
             return createResponse(409, {
                 code: 'DUPLICATE_ORDER',
-                message: 'Order number already exists'
+                message: 'Order number already exists for this distributor'
             });
         }
 
-        let distributorId = event.user.sub;
-        await ddbDocClient.send(new PutCommand({
-            TableName: 'AppPurchaseOrders',
-            Item: {
-                OrderNumber: sanitizedOrderNumber,
-                CreatedAt: new Date().toISOString(),
-                Status: 'pending',
-                DistributorId: distributorId
-            }
-        }));
+        // Check for global uniqueness due to HASH key constraint
+        try {
+            console.log('Attempting to insert order:', {
+                orderNumber: sanitizedOrderNumber,
+                distributorId: distributorId
+            });
 
-        return createResponse(200, {
-            message: 'Order number inserted successfully',
-            orderNumber: sanitizedOrderNumber,
-            timestamp: new Date().toISOString()
-        });
+            const putResult = await ddbDocClient.send(new PutCommand({
+                TableName: 'AppPurchaseOrders',
+                Item: {
+                    OrderNumber: sanitizedOrderNumber,
+                    CreatedAt: new Date().toISOString(),
+                    Status: 'pending',
+                    DistributorId: distributorId
+                },
+                ConditionExpression: 'attribute_not_exists(OrderNumber)'
+            }));
+
+            console.log('PutCommand result:', putResult);
+
+            return createResponse(200, {
+                code: 'SUCCESS',
+                message: 'Order number inserted successfully',
+                orderNumber: sanitizedOrderNumber,
+                timestamp: new Date().toISOString()
+            });
+
+        } catch (putError) {
+            console.error('PutCommand error details:', {
+                name: putError.name,
+                code: putError.code,
+                message: putError.message,
+                type: putError.$metadata?.httpStatusCode
+            });
+
+            if (putError.name === 'ConditionalCheckFailedException') {
+                return createResponse(409, {
+                    code: 'GLOBAL_DUPLICATE_ORDER',
+                    message: 'Order number already exists in the system'
+                });
+            }
+
+            throw putError; // Re-throw to be caught by outer catch and handled by handleLambdaError
+        }
+
     } catch (error) {
+        console.error('Error in handleInsertAppPurchaseOrder:', {
+            errorName: error.name,
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorType: error.$metadata?.httpStatusCode
+        });
         return handleLambdaError(error, 'handleInsertAppPurchaseOrder');
     }
 }
@@ -671,32 +720,21 @@ async function handleVerifyAppPurchase(body) {
         }
 
         const purchaseDate = new Date().toISOString();
+        // Set initial status based on link type - generic is always pending
         let purchaseStatus = tokenResult.Item.LinkType === 'unique' ? 'active' : 'pending';
-        let orderMatchFound = false;
 
-        // For generic links, verify order number
+        // For generic links, only validate order number uniqueness within distributor scope
         if (tokenResult.Item.LinkType === 'generic' && body.orderNumber) {
             try {
                 const sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
-                const orderResult = await ddbDocClient.send(new GetCommand({
-                    TableName: 'AppPurchaseOrders',
-                    Key: { OrderNumber: sanitizedOrderNumber }
-                }));
 
-                if (orderResult.Item &&
-                    (orderResult.Item.Status === 'pending' || !orderResult.Item.Status)) {
-                    orderMatchFound = true;
-                    purchaseStatus = 'active';
-                } else {
-                    purchaseStatus = 'pending';  // Set pending if no order match
-                }
-
-                // Check if order number already used for another user
+                // Check if order number already used for another user within same distributor
                 const existingUserScan = await ddbDocClient.send(new ScanCommand({
                     TableName: 'AppUsers',
-                    FilterExpression: 'OrderNumber = :orderNumber',
+                    FilterExpression: 'OrderNumber = :orderNumber AND DistributorId = :distributorId',
                     ExpressionAttributeValues: {
-                        ':orderNumber': sanitizedOrderNumber
+                        ':orderNumber': sanitizedOrderNumber,
+                        ':distributorId': tokenResult.Item.DistributorId
                     }
                 }));
 
@@ -726,8 +764,8 @@ async function handleVerifyAppPurchase(body) {
                         CreatedAt: purchaseDate,
                         Token: body.token,
                         OrderNumber: body.orderNumber || null,
-                        DistributorId: tokenResult.Item.DistributorId,  // Also need to store this
-                        LinkType: tokenResult.Item.LinkType  // And this for filtering
+                        DistributorId: tokenResult.Item.DistributorId,
+                        LinkType: tokenResult.Item.LinkType
                     },
                     ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(Email)'
                 }
@@ -740,19 +778,6 @@ async function handleVerifyAppPurchase(body) {
                 Update: {
                     TableName: 'AppPurchaseTokens',
                     Key: { Token: body.token },
-                    UpdateExpression: 'SET #status = :statusValue',
-                    ExpressionAttributeNames: { '#status': 'Status' },
-                    ExpressionAttributeValues: { ':statusValue': 'used' }
-                }
-            });
-        }
-
-        // Update order status if order matched
-        if (orderMatchFound) {
-            transactItems.push({
-                Update: {
-                    TableName: 'AppPurchaseOrders',
-                    Key: { OrderNumber: body.orderNumber },
                     UpdateExpression: 'SET #status = :statusValue',
                     ExpressionAttributeNames: { '#status': 'Status' },
                     ExpressionAttributeValues: { ':statusValue': 'used' }
@@ -782,6 +807,7 @@ async function handleVerifyAppPurchase(body) {
         return handleLambdaError(error, 'handleVerifyAppPurchase');
     }
 }
+
 function verifyToken(token) {
     try {
         return jwt.verify(token, JWT_SECRET);
