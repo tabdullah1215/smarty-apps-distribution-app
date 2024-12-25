@@ -507,7 +507,7 @@ async function handleAppLogin(body) {
             });
         }
 
-        if (userResult.Item.Status !== 'active') {
+        if (userResult.Item.Status !== 'active' && userResult.Item.Status !== 'pending') {
             return createResponse(403, {
                 code: 'ACCOUNT_INACTIVE',
                 message: 'Account is not active'
