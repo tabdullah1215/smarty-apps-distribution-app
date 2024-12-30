@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import DashboardHeader from './DashboardHeader';
 import LinkGenerator from './LinkGenerator';
@@ -16,6 +16,8 @@ import AppUserEditModal from './AppUserEditModal';
 import { useAppUserUpdate } from '../hooks/useAppUserUpdate';
 import SyncAppUsersAndOrders from './SyncAppUsersAndOrders';
 import { useSyncAppUsersAndOrders } from '../hooks/useSyncAppUsersAndOrders';
+import BulkAppPurchaseOrders from './BulkAppPurchaseOrders';
+import {useAppOrdersUpload} from "../hooks/useAppOrdersUpload";
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -48,6 +50,25 @@ function DistributorDashboard() {
     const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
+
+
+    const bulkUploadRef = useRef(null);
+    const {
+        csvFile,
+        isUploading,
+        handleFileChange,
+        processAndUploadCSV
+    } = useAppOrdersUpload(
+        setPermanentMessage,
+        () => {
+            fetchPurchaseOrders({
+                orderFilter,
+                dateFilter,
+                statusFilter
+            });
+        },
+        bulkUploadRef
+    );
 
     const { syncAppUsersAndOrders, isSyncing: isSyncingUsers } = useSyncAppUsersAndOrders(
         setPermanentMessage,
@@ -268,6 +289,14 @@ function DistributorDashboard() {
                     onOrderNumberChange={(e) => setOrderNumber(e.target.value)}
                     onSubmit={handleOrderSubmit}
                     isInserting={isInserting}
+                />
+
+                <BulkAppPurchaseOrders
+                    csvFile={csvFile}
+                    onCsvUpload={handleFileChange}
+                    onProcessCsv={processAndUploadCSV}
+                    isUploading={isUploading}
+                    fileInputRef={bulkUploadRef}
                 />
 
                 <SyncAppUsersAndOrders
