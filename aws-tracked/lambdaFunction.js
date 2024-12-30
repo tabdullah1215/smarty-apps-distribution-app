@@ -491,7 +491,15 @@ async function handleAppLogin(body) {
             });
         }
 
-        // Lookup user by AppId and Email composite key
+        // Get app info
+        const appResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'Apps',
+            Key: { AppId: body.appId }
+        }));
+
+        const appName = appResult.Item?.Name;
+
+        // Existing user lookup code
         const userResult = await ddbDocClient.send(new GetCommand({
             TableName: 'AppUsers',
             Key: {
@@ -514,11 +522,11 @@ async function handleAppLogin(body) {
             });
         }
 
-        // Generate JWT for app user
         const token = jwt.sign(
             {
                 sub: userResult.Item.Email,
                 appId: body.appId,
+                appName: appName,
                 status: userResult.Item.Status
             },
             JWT_SECRET,
@@ -529,14 +537,14 @@ async function handleAppLogin(body) {
             token,
             user: {
                 email: userResult.Item.Email,
-                status: userResult.Item.Status
+                status: userResult.Item.Status,
+                appName: appName
             }
         });
     } catch (error) {
         return handleLambdaError(error, 'handleAppLogin');
     }
 }
-
 async function handleFetchAppPurchaseOrders(event) {
     try {
 
