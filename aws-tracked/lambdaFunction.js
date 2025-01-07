@@ -46,7 +46,8 @@ const actionConfig = {
     generatePurchaseToken: { role: 'Distributor' },
     insertAppPurchaseOrder: { role: 'Distributor' },
     getAppPurchaseOrders: { role: 'Distributor' },
-    updateAppUser: { role: 'Distributor' }
+    updateAppUser: { role: 'Distributor' },
+    bulkInsertAppPurchaseOrder: { role: 'Distributor' }
 };
 
 // Password hashing utilities
@@ -1079,6 +1080,8 @@ exports.handler = async (event) => {
                 return await handleFetchAppPurchaseOrders(event);
             case 'updateAppUser':
                 return await handleUpdateAppUser(body, event);
+            case 'bulkInsertAppPurchaseOrder':
+                return await handleBulkInsertAppPurchaseOrder(body, event);
 
             default:
                 return createResponse(400, {
@@ -1090,6 +1093,137 @@ exports.handler = async (event) => {
         return handleLambdaError(error, currentAction);
     }
 };
+
+async function handleBulkInsertAppPurchaseOrder(body, event) {
+    console.log('Processing bulk insert app purchase order request');
+    try {
+        if (!body.orderNumbers || !Array.isArray(body.orderNumbers)) {
+            return createResponse(400, {
+                code: 'MISSING_ORDER_NUMBERS',
+                message: 'Array of order numbers is required'
+            });
+        }
+
+        const distributorId = event.user.sub;
+        const results = {
+            successful: [],
+            failed: [],
+            duplicates: []
+        };
+
+        // Process each order number through the same sanitization as single orders
+        const sanitizedOrders = await Promise.all(body.orderNumbers.map(async (orderNumber) => {
+            try {
+                const sanitized = sanitizeOrderNumber(orderNumber);
+
+                // Check for duplicate using same logic as single insert
+                const existingOrder = await ddbDocClient.send(new ScanCommand({
+                    TableName: 'AppPurchaseOrders',
+                    FilterExpression: 'OrderNumber = :orderNumber AND DistributorId = :distributorId',
+                    ExpressionAttributeValues: {
+                        ':orderNumber': sanitized,
+                        ':distributorId': distributorId
+                    }
+                }));
+
+                if (existingOrder.Items && existingOrder.Items.length > 0) {
+                    return {
+                        orderNumber: sanitized,
+                        isDuplicate: true
+                    };
+                }
+
+                return {
+                    orderNumber: sanitized,
+                    isDuplicate: false
+                };
+            } catch (error) {
+                return {
+                    orderNumber,
+                    isError: true,
+                    error: error.message
+                };
+            }
+        }));
+
+        // Categorize orders based on validation results
+        for (const order of sanitizedOrders) {
+            if (order.isError) {
+                results.failed.push({
+                    orderNumber: order.orderNumber,
+                    reason: order.error
+                });
+            } else if (order.isDuplicate) {
+                results.duplicates.push({
+                    orderNumber: order.orderNumber,
+                    reason: 'Order number already exists for this distributor'
+                });
+            } else {
+                results.successful.push({
+                    orderNumber: order.orderNumber,
+                    status: 'pending'
+                });
+            }
+        }
+
+        // Insert valid orders in batches
+        if (results.successful.length > 0) {
+            const batchSize = 25; // DynamoDB limit
+            for (let i = 0; i < results.successful.length; i += batchSize) {
+                const batch = results.successful.slice(i, i + batchSize);
+                const putRequests = batch.map(({ orderNumber }) => ({
+                    PutRequest: {
+                        Item: {
+                            OrderNumber: orderNumber,
+                            DistributorId: distributorId,
+                            CreatedAt: new Date().toISOString(),
+                            Status: 'pending'
+                        }
+                    }
+                }));
+
+                try {
+                    await ddbDocClient.send(new BatchWriteCommand({
+                        RequestItems: {
+                            'AppPurchaseOrders': putRequests
+                        }
+                    }));
+                } catch (error) {
+                    console.error('Error inserting batch:', error);
+                    // Move failed batch items to failed results
+                    batch.forEach(({ orderNumber }) => {
+                        const indexInSuccess = results.successful.findIndex(
+                            s => s.orderNumber === orderNumber
+                        );
+                        if (indexInSuccess !== -1) {
+                            results.successful.splice(indexInSuccess, 1);
+                            results.failed.push({
+                                orderNumber,
+                                reason: 'Database insertion failed'
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
+        // Prepare response message
+        const message = `Processed ${body.orderNumbers.length} orders: ` +
+            `${results.successful.length} inserted successfully, ` +
+            `${results.duplicates.length} duplicates skipped, ` +
+            `${results.failed.length} failed.`;
+
+        return createResponse(200, {
+            code: 'SUCCESS',
+            message,
+            results
+        });
+
+    } catch (error) {
+        console.error('Error in bulk insert app purchase orders:', error);
+        return handleLambdaError(error, 'handleBulkInsertAppPurchaseOrder');
+    }
+}
 
 function handleLambdaError(error, context = '') {
     console.error(`Error in ${context}:`, error);
