@@ -164,7 +164,7 @@ function DistributorDashboard() {
             const token = authService.getToken();
 
             const response = await axios.post(
-                `${API_ENDPOINT}/create-distributor`,
+                `${API_ENDPOINT}/app-manager`,
                 {},
                 {
                     params: { action: 'fetchAvailableApps' },
@@ -196,7 +196,7 @@ function DistributorDashboard() {
             const token = authService.getToken();
 
             await axios.post(
-                `${API_ENDPOINT}/create-distributor`,
+                `${API_ENDPOINT}/app-manager`,
                 { orderNumber },
                 {
                     params: { action: 'insertAppPurchaseOrder' },

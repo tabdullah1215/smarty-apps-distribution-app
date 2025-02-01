@@ -9,7 +9,7 @@ export const useDistributorUpdate = (onSuccess, onError) => {
     const handleDistributorUpdate = async (distributorId, updatedData) => {
         setIsUpdating(true);
         try {
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+            const response = await axios.post(`${API_ENDPOINT}/app-manager`,
                 {
                     distributorId,
                     ...updatedData

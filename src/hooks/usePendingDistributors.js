@@ -24,7 +24,7 @@ export const useIncomingOrders = (setPermanentMessage) => {
 
             const response = await withMinimumDelay(async () => {
                 return await axios.post(
-                    `${API_ENDPOINT}/create-distributor`,
+                    `${API_ENDPOINT}/app-manager`,
                     {},
                     {
                         params: {
@@ -90,7 +90,7 @@ export const usePendingDistributors = (setPermanentMessage) => {
             const token = authService.getToken();
 
             const response = await withMinimumDelay(async () => {
-                return await axios.get(`${API_ENDPOINT}/get-distributors`, {
+                return await axios.get(`${API_ENDPOINT}/app-manager`, {
                     params: {
                         action: 'getDistributors',
                         nameFilter,

@@ -32,7 +32,7 @@ export const useCSVUpload = (setPermanentMessage, onSuccess, fileInputRef) => {
 
                 try {
                     const response = await axios.post(
-                        `${API_ENDPOINT}/bulk-insert-orders`,
+                        `${API_ENDPOINT}/app-manager`,
                         { orders },
                         {
                             params: { action: 'bulkInsertOrders' },

@@ -44,7 +44,7 @@ export const useAppOrdersUpload = (setPermanentMessage, onSuccess, fileInputRef)
                     }
 
                     const response = await axios.post(
-                        `${API_ENDPOINT}/create-distributor`,
+                        `${API_ENDPOINT}/app-manager`,
                         { orderNumbers },
                         {
                             params: { action: 'bulkInsertAppPurchaseOrder' },

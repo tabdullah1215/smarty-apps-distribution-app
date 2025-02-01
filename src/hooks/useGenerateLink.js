@@ -20,7 +20,7 @@ export const useGenerateLink = (setPermanentMessage) => {
             setPermanentMessage({ type: '', content: '' }); // Clear any existing message
 
             const response = await withMinimumDelay(async () => {
-                const result = await axios.post(`${API_ENDPOINT}/create-distributor`,
+                const result = await axios.post(`${API_ENDPOINT}/app-manager`,
                     { linkType },
                     {
                         params: { action: 'generateToken' },

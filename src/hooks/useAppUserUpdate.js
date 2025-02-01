@@ -11,7 +11,7 @@ export const useAppUserUpdate = (onSuccess, onError) => {
         try {
             const token = authService.getToken();
 
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+            const response = await axios.post(`${API_ENDPOINT}/app-manager`,
                 {
                     appId,
                     email,

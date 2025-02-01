@@ -14,7 +14,7 @@ export const useLogin = (setPermanentMessage) => {
         setPermanentMessage({ type: '', content: '' });
 
         try {
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+            const response = await axios.post(`${API_ENDPOINT}/app-manager`,
                 { email, password },
                 {
                     params: { action: 'verifyCredentials' },

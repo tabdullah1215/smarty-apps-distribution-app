@@ -7,7 +7,7 @@ export const useOrderInsert = (setPermanentMessage, onSuccess) => {
     const [isInserting, setIsInserting] = useState(false);
 
     const insertOrderNumber = async (orderNumber) => {
-        const url = `${API_ENDPOINT}/insert-order`;
+        const url = `${API_ENDPOINT}/app-manager`;
         setIsInserting(true);
         try {
             setPermanentMessage({ type: '', content: '' });

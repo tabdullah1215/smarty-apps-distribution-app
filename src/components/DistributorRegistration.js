@@ -60,7 +60,7 @@ function DistributorRegistration() {
                 payload.orderNumber = orderNumber;
             }
 
-            const response = await axios.post(`${API_ENDPOINT}/create-distributor`,
+            const response = await axios.post(`${API_ENDPOINT}/app-manager`,
                 payload,
                 {
                     params: { action: 'registerDistributor' },

@@ -24,7 +24,7 @@ export const usePendingAppUsers = (setPermanentMessage) => {
 
             const response = await withMinimumDelay(async () => {
                 return await axios.post(
-                    `${API_ENDPOINT}/create-distributor`,
+                    `${API_ENDPOINT}/app-manager`,
                     {},
                     {
                         params: {
