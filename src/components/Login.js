@@ -1,23 +1,15 @@
-// components/Login.js
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import DashboardHeader from './DashboardHeader';
 import authService from '../services/authService';
 import { useLogin } from '../hooks/useLogin';
 
-// Owner-specific login component
-export const OwnerLogin = () => <Login role="Owner" />;
-
-// Distributor-specific login component
-export const DistributorLogin = () => <Login role="Distributor" />;
-
-// Main Login component
-function Login({ role = 'Distributor' }) {
+function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [permanentMessage, setPermanentMessage] = useState({ type: '', content: '' });
     const location = useLocation();
-    const { isLoading, handleLogin } = useLogin(setPermanentMessage, role);
+    const { isLoading, handleLogin } = useLogin(setPermanentMessage);
 
     useEffect(() => {
         authService.removeToken();
@@ -37,7 +29,7 @@ function Login({ role = 'Distributor' }) {
     return (
         <div className="min-h-screen bg-gray-200">
             <DashboardHeader
-                title={`${role} Login`}
+                title="Login"
                 permanentMessage={permanentMessage}
             />
             <div className="pt-72 md:pt-60">
