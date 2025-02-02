@@ -106,7 +106,8 @@ export const usePendingDistributors = (setPermanentMessage) => {
                     },
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`,
+                        'X-Api-Key': API_KEY
                     },
                     withCredentials: false
                 });
