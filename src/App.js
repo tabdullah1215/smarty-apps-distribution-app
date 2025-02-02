@@ -5,8 +5,9 @@ import PWAGateway from './components/PWAGateway';
 import OwnerDashboard from './components/OwnerDashboard';
 import DistributorDashboard from './components/DistributorDashboard';
 import DistributorRegistration from './components/DistributorRegistration';
-import Login from './components/Login';
+import Login, { OwnerLogin, DistributorLogin } from './components/Login';
 import authService from './services/authService';
+
 
 // Protected Route Component with role check
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -58,7 +59,8 @@ function App() {
     return (
         <Router>
             <Routes>
-                <Route path="/login" element={<Login />} />
+                <Route path="/owner/login" element={<OwnerLogin />} />
+                <Route path="/distributor/login" element={<DistributorLogin />} />
                 <Route path="/register/:linkType/:token" element={<DistributorRegistration />} />
                 <Route
                     path="/distributor"

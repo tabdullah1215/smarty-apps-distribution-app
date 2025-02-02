@@ -78,7 +78,7 @@ function DistributorRegistration() {
                 });
 
                 // Navigate to login with success message
-                navigate('/login', {
+                navigate('/distributor/login', {
                     state: {
                         registration: 'success',
                         email: email,  // Pass username to pre-fill login form
