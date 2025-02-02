@@ -90,7 +90,7 @@ export const usePendingDistributors = (setPermanentMessage) => {
             const token = authService.getToken();
 
             const response = await withMinimumDelay(async () => {
-                return await axios.get(`${API_ENDPOINT}/app-manager`, {
+                return await axios.post(`${API_ENDPOINT}/app-manager`, {}, {
                     params: {
                         action: 'getDistributors',
                         nameFilter,
