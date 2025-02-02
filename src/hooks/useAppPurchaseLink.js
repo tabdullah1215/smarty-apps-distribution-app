@@ -15,6 +15,8 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
         generic: false
     });
 
+    const API_KEY = process.env.REACT_APP_API_KEY;
+
     const generatePurchaseLink = async (linkType, appId) => {
         if (!appId) {
             setPermanentMessage({
@@ -29,6 +31,7 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
             setPermanentMessage({ type: '', content: '' });
 
             const userInfo = authService.getUserInfo();
+            const token = authService.getToken();
 
             if (!userInfo?.sub) {
                 throw new Error('Authentication required. Please log in again.');
@@ -49,7 +52,12 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
                         distributorId: userInfo.sub // Using sub from JWT as distributorId
                     },
                     {
-                        params: { action: 'generatePurchaseToken' }
+                        params: { action: 'generatePurchaseToken' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,  // Added this line
+                            'X-Api-Key': API_KEY  // Added this line
+                            }
                     }
                 );
             });

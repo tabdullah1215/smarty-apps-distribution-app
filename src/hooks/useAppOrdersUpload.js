@@ -7,6 +7,7 @@ import authService from '../services/authService';
 export const useAppOrdersUpload = (setPermanentMessage, onSuccess, fileInputRef) => {
     const [isUploading, setIsUploading] = useState(false);
     const [csvFile, setCsvFile] = useState(null);
+    const API_KEY = process.env.REACT_APP_API_KEY;
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -50,7 +51,8 @@ export const useAppOrdersUpload = (setPermanentMessage, onSuccess, fileInputRef)
                             params: { action: 'bulkInsertAppPurchaseOrder' },
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
+                                'Authorization': `Bearer ${token}`,
+                                'X-Api-Key': API_KEY
                             }
                         }
                     );

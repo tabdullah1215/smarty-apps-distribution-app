@@ -5,6 +5,7 @@ import authService from '../services/authService';
 
 export const useAppUserUpdate = (onSuccess, onError) => {
     const [isUpdating, setIsUpdating] = useState(false);
+    const API_KEY = process.env.REACT_APP_API_KEY;
 
     const handleAppUserUpdate = async (appId, email, updatedData) => {
         setIsUpdating(true);
@@ -21,7 +22,8 @@ export const useAppUserUpdate = (onSuccess, onError) => {
                     params: { action: 'updateAppUser' },
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`,
+                        'X-Api-Key': API_KEY
                     }
                 }
             );

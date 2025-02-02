@@ -10,6 +10,8 @@ export const useIncomingOrders = (setPermanentMessage) => {
     const [isRefreshing, setIsRefreshing] = useState(false);  // Renamed from isLoading
     const [isSyncing, setIsSyncing] = useState(false);        // New state for sync
 
+    const API_KEY = process.env.REACT_APP_API_KEY;
+
     const fetchIncomingOrders = async (filters = {}, isFromSync = false) => {
         // Set appropriate loading state
         if (isFromSync) {
@@ -32,7 +34,8 @@ export const useIncomingOrders = (setPermanentMessage) => {
                         },
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
+                            'Authorization': `Bearer ${token}`,
+                            'X-Api-Key': API_KEY
                         },
                         withCredentials: false
                     }

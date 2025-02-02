@@ -2,9 +2,13 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
+import authService from '../services/authService';
 
 export const useOrderInsert = (setPermanentMessage, onSuccess) => {
     const [isInserting, setIsInserting] = useState(false);
+
+    const token = authService.getToken();
+    const API_KEY = process.env.REACT_APP_API_KEY;
 
     const insertOrderNumber = async (orderNumber) => {
         const url = `${API_ENDPOINT}/app-manager`;
@@ -17,7 +21,11 @@ export const useOrderInsert = (setPermanentMessage, onSuccess) => {
                 { orderNumber },
                 {
                     params: { action: 'insertOrder' },
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Api-Key': API_KEY
+                    },
                 }
             );
 

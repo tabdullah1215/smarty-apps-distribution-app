@@ -9,6 +9,9 @@ export const useLogin = (setPermanentMessage) => {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
+    const token = authService.getToken();
+    const API_KEY = process.env.REACT_APP_API_KEY;
+
     const handleLogin = async (email, password) => {
         setIsLoading(true);
         setPermanentMessage({ type: '', content: '' });
@@ -18,7 +21,11 @@ export const useLogin = (setPermanentMessage) => {
                 { email, password },
                 {
                     params: { action: 'verifyCredentials' },
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Api-Key': API_KEY
+                    },
                 }
             );
 

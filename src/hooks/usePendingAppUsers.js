@@ -20,6 +20,7 @@ export const usePendingAppUsers = (setPermanentMessage) => {
 
         try {
             const token = authService.getToken();
+            const API_KEY = process.env.REACT_APP_API_KEY;
             console.log('Fetching with filters:', { appFilter, emailFilter, orderFilter, statusFilter, linkTypeFilter }); // Debug log
 
             const response = await withMinimumDelay(async () => {
@@ -38,7 +39,8 @@ export const usePendingAppUsers = (setPermanentMessage) => {
                         },
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
+                            'Authorization': `Bearer ${token}`,
+                            'X-Api-Key': API_KEY
                         },
                         withCredentials: false
                     }

@@ -3,12 +3,17 @@ import { useState } from 'react';
 import axios from 'axios';
 import { API_ENDPOINT } from '../config';
 import { withMinimumDelay } from '../utils/withDelay';
+import authService from '../services/authService';
 
 export const useGenerateLink = (setPermanentMessage) => {
     const [uniqueLink, setUniqueLink] = useState('');
     const [genericLink, setGenericLink] = useState('');
     const [copiedUnique, setCopiedUnique] = useState(false);
     const [copiedGeneric, setCopiedGeneric] = useState(false);
+
+    const token = authService.getToken();
+    const API_KEY = process.env.REACT_APP_API_KEY;
+
     const [generatingStates, setGeneratingStates] = useState({
         unique: false,
         generic: false
@@ -24,7 +29,11 @@ export const useGenerateLink = (setPermanentMessage) => {
                     { linkType },
                     {
                         params: { action: 'generateToken' },
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,  // Added Authorization
+                            'X-Api-Key': API_KEY
+                        }
                     }
                 );
                 return result;

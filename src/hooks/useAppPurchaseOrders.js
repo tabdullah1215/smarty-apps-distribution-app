@@ -11,6 +11,8 @@ export const useAppPurchaseOrders = (setPermanentMessage) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
+    const API_KEY = process.env.REACT_APP_API_KEY;
+
     const fetchPurchaseOrders = async (filters = {}, isFromSync = false) => {
         if (isFromSync) {
             setIsSyncing(true);
@@ -31,7 +33,8 @@ export const useAppPurchaseOrders = (setPermanentMessage) => {
                         },
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
+                            'Authorization': `Bearer ${token}`,
+                            'X-Api-Key': API_KEY
                         }
                     }
                 );

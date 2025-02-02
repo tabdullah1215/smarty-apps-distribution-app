@@ -3,6 +3,9 @@ import { useState } from 'react';
 import axios from 'axios';
 import Papa from 'papaparse';
 import { API_ENDPOINT } from '../config';
+import authService from '../services/authService';  // Added this import
+
+const API_KEY = process.env.REACT_APP_API_KEY;  // Added API key
 
 export const useCSVUpload = (setPermanentMessage, onSuccess, fileInputRef) => {
     const [isUploading, setIsUploading] = useState(false);
@@ -20,6 +23,7 @@ export const useCSVUpload = (setPermanentMessage, onSuccess, fileInputRef) => {
         }
 
         setIsUploading(true);
+        const token = authService.getToken();  // Added token retrieval
 
         Papa.parse(csvFile, {
             complete: async (result) => {
@@ -36,7 +40,11 @@ export const useCSVUpload = (setPermanentMessage, onSuccess, fileInputRef) => {
                         { orders },
                         {
                             params: { action: 'bulkInsertOrders' },
-                            headers: { 'Content-Type': 'application/json' }
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`,  // Added Authorization
+                                'X-Api-Key': API_KEY  // Added API key
+                            }
                         }
                     );
                     setPermanentMessage({ type: 'success', content: response.data.message });

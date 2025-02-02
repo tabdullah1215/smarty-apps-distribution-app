@@ -51,6 +51,8 @@ function DistributorDashboard() {
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
 
+    const API_KEY = process.env.REACT_APP_API_KEY;
+
 
     const bulkUploadRef = useRef(null);
     const {
@@ -170,7 +172,8 @@ function DistributorDashboard() {
                     params: { action: 'fetchAvailableApps' },
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': API_KEY
                     }
                 }
             );
@@ -202,7 +205,8 @@ function DistributorDashboard() {
                     params: { action: 'insertAppPurchaseOrder' },
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Api-Key': API_KEY
                     }
                 }
             );

@@ -7,6 +7,7 @@ import authService from '../services/authService';
 
 export const useSyncAppUsersAndOrders = (setPermanentMessage, onSuccess) => {
     const [isSyncing, setIsSyncing] = useState(false);
+    const API_KEY = process.env.REACT_APP_API_KEY;
 
     const syncAppUsersAndOrders = async () => {
         setIsSyncing(true);
@@ -22,7 +23,8 @@ export const useSyncAppUsersAndOrders = (setPermanentMessage, onSuccess) => {
                         params: { action: 'syncAppUsers' },
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
+                            'Authorization': `Bearer ${token}`,
+                            'X-Api-Key': API_KEY
                         },
                         withCredentials: false
                     }
