@@ -14,7 +14,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     const userInfo = authService.getUserInfo();
 
     if (!authService.isAuthenticated()) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/distributor/login" replace />;
     }
 
     // Redirect if user doesn't have the required role
@@ -91,7 +91,7 @@ function App() {
                     }
                 />
                 {/* Catch-all redirect to login */}
-                <Route path="*" element={<Navigate to="/login" replace />} />
+                <Route path="*" element={<Navigate to="/distributor/login" replace />} />
             </Routes>
         </Router>
     );
