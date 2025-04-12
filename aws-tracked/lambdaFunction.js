@@ -2,6 +2,7 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, QueryCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const DEFAULT_BUDGET_TYPE = 'paycheck';
 // const bcrypt = require('bcryptjs');
 
 const ddbClient = new DynamoDBClient({});
@@ -24,6 +25,7 @@ const headers = {
 
 const actionConfig = {
     // Public actions (no auth required)
+    verifyEmail: { public: true },
     verifyCredentials: { public: true },
     verifyAppPurchase: { public: true },
     registerDistributor: { public: true },
@@ -47,7 +49,8 @@ const actionConfig = {
     insertAppPurchaseOrder: { role: 'Distributor' },
     getAppPurchaseOrders: { role: 'Distributor' },
     updateAppUser: { role: 'Distributor' },
-    bulkInsertAppPurchaseOrder: { role: 'Distributor' }
+    bulkInsertAppPurchaseOrder: { role: 'Distributor' },
+    getSubAppsForApp: { role: 'Distributor' },
 };
 
 // Password hashing utilities
@@ -69,6 +72,33 @@ function generateToken(user) {
         JWT_SECRET,
         { expiresIn: JWT_EXPIRATION }
     );
+}
+
+async function handleVerifyEmail(body) {
+    console.log('Processing verify email request');
+    try {
+        if (!body.email || !body.appId) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Email and appId are required'
+            });
+        }
+
+        const result = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppUsers',
+            Key: {
+                AppId: body.appId,
+                Email: body.email
+            }
+        }));
+
+        return createResponse(200, {
+            exists: !!result.Item,
+            user: result.Item ? true : false
+        });
+    } catch (error) {
+        return handleLambdaError(error, 'handleVerifyEmail');
+    }
 }
 
 async function handleUpdateAppUser(body, event) {
@@ -367,7 +397,7 @@ async function handleFetchAvailableApps(event) {
     }
 }
 
-async function handleGenerateAppPurchaseToken(body, event) { // Add event parameter
+async function handleGenerateAppPurchaseToken(body, event) {
     console.log('Generating new app purchase token', {
         receivedBody: body,
         distributorId: body.distributorId,
@@ -375,15 +405,16 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
     });
 
     try {
-        if (!body.linkType || !body.appId || !body.distributorId) {
+        if (!body.linkType || !body.appId || !body.distributorId || !body.subAppId) {
             console.log('Missing required fields:', {
                 hasLinkType: !!body.linkType,
                 hasAppId: !!body.appId,
-                hasDistributorId: !!body.distributorId
+                hasDistributorId: !!body.distributorId,
+                hasSubAppId: !!body.subAppId
             });
             return createResponse(400, {
                 code: 'MISSING_REQUIRED_FIELDS',
-                message: 'Link type, app ID, and distributor ID are required for purchase token generation'
+                message: 'Link type, app ID, distributor ID, and subApp ID are required for purchase token generation'
             });
         }
 
@@ -396,7 +427,7 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
             });
         }
 
-        // Rest of the function remains the same
+        // Get app info
         const appResult = await ddbDocClient.send(new GetCommand({
             TableName: 'Apps',
             Key: { AppId: body.appId }
@@ -411,6 +442,29 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
             return createResponse(403, {
                 code: 'APP_NOT_AVAILABLE',
                 message: 'App is not currently available for purchase'
+            });
+        }
+
+        // Verify the subAppId is valid for this app
+        console.log('Verifying SubAppId validity using AppSubAppMapping table');
+        const mappingResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppSubAppMapping',
+            Key: {
+                AppId: body.appId,
+                SubAppId: body.subAppId
+            }
+        }));
+
+        console.log('SubAppId mapping lookup result:', {
+            found: !!mappingResult.Item,
+            appId: body.appId,
+            subAppId: body.subAppId
+        });
+
+        if (!mappingResult.Item) {
+            return createResponse(400, {
+                code: 'INVALID_SUBAPP_ID',
+                message: 'The provided SubApp ID is not valid for this application'
             });
         }
 
@@ -447,6 +501,7 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
             ExpiresAt: expiresAt,
             LinkType: body.linkType,
             AppId: body.appId,
+            SubAppId: body.subAppId, // Add the SubAppId
             DistributorId: body.distributorId,
             Status: body.linkType === 'unique' ? 'pending' : 'active'
         };
@@ -459,6 +514,7 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
         console.log('App purchase token generated:', {
             token,
             appId: body.appId,
+            subAppId: body.subAppId, // Log the SubAppId
             distributorId: body.distributorId,
             linkType: body.linkType,
             status: tokenItem.Status
@@ -468,7 +524,8 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
             token,
             expiresAt,
             status: tokenItem.Status,
-            appDomain: appResult.Item.AppDomain
+            appDomain: appResult.Item.AppDomain,
+            subAppId: body.subAppId // Return the SubAppId in the response
         });
 
     } catch (error) {
@@ -482,7 +539,6 @@ async function handleGenerateAppPurchaseToken(body, event) { // Add event parame
         return handleLambdaError(error, 'handleGenerateAppPurchaseToken');
     }
 }
-
 async function handleAppLogin(body) {
     try {
         if (!body.appId || !body.email || !body.password) {
@@ -523,11 +579,13 @@ async function handleAppLogin(body) {
             });
         }
 
+        // Include SubAppId in JWT token
         const token = jwt.sign(
             {
                 sub: userResult.Item.Email,
                 appId: body.appId,
                 appName: appName,
+                subAppId: userResult.Item.SubAppId || 'all', // Default to 'all' if not set
                 status: userResult.Item.Status
             },
             JWT_SECRET,
@@ -539,7 +597,8 @@ async function handleAppLogin(body) {
             user: {
                 email: userResult.Item.Email,
                 status: userResult.Item.Status,
-                appName: appName
+                appName: appName,
+                subAppId: userResult.Item.SubAppId || 'all'
             }
         });
     } catch (error) {
@@ -688,6 +747,39 @@ async function handleInsertAppPurchaseOrder(body, event) {
     }
 }
 
+async function handleGetSubAppsForApp(event) {
+    console.log("getSubAppsForApp called with:", {
+        queryStringParameters: event.queryStringParameters,
+        body: JSON.parse(event.body || '{}'),
+        httpMethod: event.httpMethod
+    });
+    try {
+        const appId = event.queryStringParameters?.appId;
+
+        if (!appId) {
+            return createResponse(400, {
+                code: 'MISSING_APP_ID',
+                message: 'App ID is required'
+            });
+        }
+
+        // Query the mapping table for all SubAppIds for this AppId
+        const queryResult = await ddbDocClient.send(new QueryCommand({
+            TableName: 'AppSubAppMapping',
+            KeyConditionExpression: 'AppId = :appId',
+            ExpressionAttributeValues: {
+                ':appId': appId
+            }
+        }));
+
+        // Return the list of SubAppIds with their metadata
+        return createResponse(200, queryResult.Items || []);
+    } catch (error) {
+        console.error('Error fetching SubApps for App:', error);
+        return handleLambdaError(error, 'handleGetSubAppsForApp');
+    }
+}
+
 async function handleVerifyAppPurchase(body) {
     console.log('Processing app purchase verification');
     try {
@@ -724,7 +816,7 @@ async function handleVerifyAppPurchase(body) {
             (tokenResult.Item.LinkType === 'generic' && tokenResult.Item.Status !== 'active')) {
             return createResponse(400, {
                 code: 'INVALID_TOKEN_STATUS',
-                message: 'Purchase token is invalid or has already been used'
+                message: 'Registration link is invalid or has already been used'
             });
         }
 
@@ -737,7 +829,7 @@ async function handleVerifyAppPurchase(body) {
             try {
                 const sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
 
-                // Check if order number already used for another user within same distributor
+                // Check if order number already used for another user
                 const existingUserScan = await ddbDocClient.send(new ScanCommand({
                     TableName: 'AppUsers',
                     FilterExpression: 'OrderNumber = :orderNumber AND DistributorId = :distributorId',
@@ -774,7 +866,8 @@ async function handleVerifyAppPurchase(body) {
                         Token: body.token,
                         OrderNumber: body.orderNumber || null,
                         DistributorId: tokenResult.Item.DistributorId,
-                        LinkType: tokenResult.Item.LinkType
+                        LinkType: tokenResult.Item.LinkType,
+                        SubAppId: tokenResult.Item.SubAppId // Include SubAppId in the user record
                     },
                     ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(Email)'
                 }
@@ -800,23 +893,15 @@ async function handleVerifyAppPurchase(body) {
 
         return createResponse(200, {
             message: 'App registration successful',
-            status: purchaseStatus
+            status: purchaseStatus,
+            subAppId: tokenResult.Item.SubAppId
         });
 
     } catch (error) {
         console.error('Error processing app purchase:', error);
-        if (error.name === 'TransactionCanceledException') {
-            if (error.message.includes('ConditionalCheckFailed')) {
-                return createResponse(409, {
-                    code: 'EMAIL_EXISTS',
-                    message: 'Email already registered for this app'
-                });
-            }
-        }
         return handleLambdaError(error, 'handleVerifyAppPurchase');
     }
 }
-
 function verifyToken(token) {
     try {
         return jwt.verify(token, JWT_SECRET);
@@ -1038,6 +1123,8 @@ exports.handler = async (event) => {
         // Handle actions
         switch (action) {
             // Public actions
+            case 'verifyEmail':
+                return await handleVerifyEmail(body);
             case 'verifyCredentials':
                 return await handleVerifyCredentials(body);
             case 'verifyAppPurchase':
@@ -1082,6 +1169,8 @@ exports.handler = async (event) => {
                 return await handleUpdateAppUser(body, event);
             case 'bulkInsertAppPurchaseOrder':
                 return await handleBulkInsertAppPurchaseOrder(body, event);
+            case 'getSubAppsForApp':
+                return await handleGetSubAppsForApp(event);
 
             default:
                 return createResponse(400, {

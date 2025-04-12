@@ -18,6 +18,7 @@ import SyncAppUsersAndOrders from './SyncAppUsersAndOrders';
 import { useSyncAppUsersAndOrders } from '../hooks/useSyncAppUsersAndOrders';
 import BulkAppPurchaseOrders from './BulkAppPurchaseOrders';
 import {useAppOrdersUpload} from "../hooks/useAppOrdersUpload";
+import SubAppSelector from "./SubAppSelector";
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -46,6 +47,7 @@ function DistributorDashboard() {
     const [selectedAppUser, setSelectedAppUser] = useState(null);
     const [showAppUserEditModal, setShowAppUserEditModal] = useState(false);
     const [appUserLinkTypeFilter, setAppUserLinkTypeFilter] = useState('');
+    const [selectedSubAppId, setSelectedSubAppId] = useState('');
 
     const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
@@ -263,6 +265,13 @@ function DistributorDashboard() {
                             <p className="mt-2 text-sm text-gray-500">Loading available apps...</p>
                         )}
                     </div>
+                    {selectedApp && (
+                        <SubAppSelector
+                            appId={selectedApp}
+                            selectedSubAppId={selectedSubAppId}
+                            onSubAppIdChange={setSelectedSubAppId}
+                        />
+                    )}
                 </div>
 
                 {selectedApp && (
@@ -271,7 +280,7 @@ function DistributorDashboard() {
                             title="Unique Purchase Link"
                             link={uniquePurchaseLink}
                             copied={copiedUnique}
-                            generateFn={() => generatePurchaseLink('unique', selectedApp)}
+                            generateFn={() => generatePurchaseLink('unique', selectedApp, selectedSubAppId)}
                             copyFn={() => copyToClipboard(uniquePurchaseLink, setCopiedUnique)}
                             isGenerating={generatingStates.unique}
                             description="For confirmed payments"
@@ -280,7 +289,7 @@ function DistributorDashboard() {
                             title="Generic Purchase Link"
                             link={genericPurchaseLink}
                             copied={copiedGeneric}
-                            generateFn={() => generatePurchaseLink('generic', selectedApp)}
+                            generateFn={() => generatePurchaseLink('generic', selectedApp, selectedSubAppId)}
                             copyFn={() => copyToClipboard(genericPurchaseLink, setCopiedGeneric)}
                             isGenerating={generatingStates.generic}
                             description="Requires order number verification"

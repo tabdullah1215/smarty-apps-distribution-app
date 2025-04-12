@@ -17,11 +17,19 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
 
     const API_KEY = process.env.REACT_APP_API_KEY;
 
-    const generatePurchaseLink = async (linkType, appId) => {
+    const generatePurchaseLink = async (linkType, appId, subAppId) => {
         if (!appId) {
             setPermanentMessage({
                 type: 'error',
                 content: 'Please select an app first'
+            });
+            return;
+        }
+
+        if (!subAppId) {
+            setPermanentMessage({
+                type: 'error',
+                content: 'Please select a sub app first'
             });
             return;
         }
@@ -40,6 +48,7 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
             console.log('Generating purchase link with params:', {
                 linkType,
                 appId,
+                subAppId,
                 distributorId: userInfo.sub
             });
 
@@ -49,21 +58,22 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
                     {
                         linkType,
                         appId,
-                        distributorId: userInfo.sub // Using sub from JWT as distributorId
+                        subAppId,
+                        distributorId: userInfo.sub
                     },
                     {
                         params: { action: 'generatePurchaseToken' },
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,  // Added this line
-                            'X-Api-Key': API_KEY  // Added this line
-                            }
+                            'Authorization': `Bearer ${token}`,
+                            'X-Api-Key': API_KEY
+                        }
                     }
                 );
             });
 
-            if (response?.data?.token && response?.data?.appDomain) {  // Add appDomain check
-                const purchaseLink = `${response.data.appDomain}/register/${appId}/${linkType}/${response.data.token}`;
+            if (response?.data?.token && response?.data?.appDomain) {
+                const purchaseLink = `${response.data.appDomain}/register/${appId}/${subAppId}/${linkType}/${response.data.token}`;
                 if (linkType === 'unique') {
                     setUniquePurchaseLink(purchaseLink);
                     setCopiedUnique(false);
@@ -105,6 +115,7 @@ export const useAppPurchaseLink = (setPermanentMessage) => {
             setGeneratingStates(prev => ({ ...prev, [linkType]: false }));
         }
     };
+
     const copyToClipboard = (link, setCopied) => {
         setPermanentMessage({ type: '', content: '' });
 
