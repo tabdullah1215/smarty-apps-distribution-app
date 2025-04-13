@@ -31,6 +31,7 @@ const actionConfig = {
     registerDistributor: { public: true },
     verifyToken: { public: true },
     appLogin: { public: true },
+    getPublicSubappInfo: { public: true },
 
     // Owner only actions
     syncOrdersAndDistributors: { role: 'Owner' },
@@ -1135,7 +1136,8 @@ exports.handler = async (event) => {
                 return await handleVerifyToken(event);
             case 'appLogin':
                 return await handleAppLogin(body);
-
+            case 'getPublicSubappInfo':
+                return await handleGetPublicSubappInfo(event);
             // Owner actions
             case 'syncOrdersAndDistributors':
                 return await handleSyncOrdersAndDistributors(event);
@@ -1988,6 +1990,50 @@ async function handleBulkInsertOrders(body) {
     } catch (error) {
         console.error('Error bulk inserting orders:', error);
         return createResponse(500, { message: 'Error bulk inserting orders', error: error.message });
+    }
+}
+
+async function handleGetPublicSubappInfo(event) {
+    console.log("getPublicSubappInfo called with:", {
+        body: JSON.parse(event.body || '{}')
+    });
+
+    try {
+        const body = JSON.parse(event.body || '{}');
+        const { appId, subappId } = body;
+
+        if (!appId || !subappId) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'App ID and SubApp ID are required'
+            });
+        }
+
+        // Get the subapp metadata from the mapping table
+        const result = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppSubAppMapping',
+            Key: {
+                AppId: appId,
+                SubAppId: subappId
+            }
+        }));
+
+        if (!result.Item) {
+            return createResponse(404, {
+                code: 'SUBAPP_NOT_FOUND',
+                message: 'SubApp not found'
+            });
+        }
+
+        // Return the subapp information
+        return createResponse(200, {
+            status: true,
+            subappName: result.Item.SubAppName || result.Item.subappName,
+            description: result.Item.Description || result.Item.description
+        });
+    } catch (error) {
+        console.error('Error fetching public subapp info:', error);
+        return handleLambdaError(error, 'handleGetPublicSubappInfo');
     }
 }
 
