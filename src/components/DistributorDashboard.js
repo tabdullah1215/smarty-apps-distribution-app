@@ -19,6 +19,7 @@ import { useSyncAppUsersAndOrders } from '../hooks/useSyncAppUsersAndOrders';
 import BulkAppPurchaseOrders from './BulkAppPurchaseOrders';
 import {useAppOrdersUpload} from "../hooks/useAppOrdersUpload";
 import SubAppSelector from "./SubAppSelector";
+import AppUserTestRegistration from './AppUserTestRegistration';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -48,13 +49,14 @@ function DistributorDashboard() {
     const [showAppUserEditModal, setShowAppUserEditModal] = useState(false);
     const [appUserLinkTypeFilter, setAppUserLinkTypeFilter] = useState('');
     const [selectedSubAppId, setSelectedSubAppId] = useState('');
+    const [showDevTools, setShowDevTools] = useState(false);
 
     const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
 
     const API_KEY = process.env.REACT_APP_API_KEY;
-
+    const distributorId = authService.getUserInfo()?.sub;
 
     const bulkUploadRef = useRef(null);
     const {
@@ -296,6 +298,29 @@ function DistributorDashboard() {
                         />
                     </>
                 )}
+
+                <div className="mt-10 border-t border-gray-200 pt-6">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-gray-900">Developer Testing Tools</h3>
+                        <button
+                            onClick={() => setShowDevTools(!showDevTools)}
+                            className="text-sm px-3 py-1 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50"
+                        >
+                            {showDevTools ? 'Hide Tools' : 'Show Tools'}
+                        </button>
+                    </div>
+
+                    {showDevTools && (
+                        <AppUserTestRegistration
+                            distributorId={distributorId}
+                            selectedApp={selectedApp}
+                            selectedSubAppId={selectedSubAppId}
+                            availableApps={apps}
+                            uniquePurchaseLink={uniquePurchaseLink}
+                            genericPurchaseLink={genericPurchaseLink}
+                        />
+                    )}
+                </div>
 
                 <InsertAppPurchaseOrder
                     orderNumber={orderNumber}
