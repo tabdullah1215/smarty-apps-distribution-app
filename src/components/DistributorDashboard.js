@@ -4,7 +4,7 @@ import DashboardHeader from './DashboardHeader';
 import LinkGenerator from './LinkGenerator';
 import { useAppPurchaseLink } from '../hooks/useAppPurchaseLink';
 import authService from '../services/authService';
-import { API_ENDPOINT } from '../config';
+import {API_ENDPOINT, DEV_FEATURES} from '../config';
 import InsertAppPurchaseOrder from './InsertAppPurchaseOrder';
 import { useAppPurchaseOrders } from '../hooks/useAppPurchaseOrders';
 import AppPurchaseOrderGrid from './AppPurchaseOrderGrid';
@@ -57,6 +57,8 @@ function DistributorDashboard() {
 
     const API_KEY = process.env.REACT_APP_API_KEY;
     const distributorId = authService.getUserInfo()?.sub;
+
+    const showDevToolsForUser = DEV_FEATURES.TEST_REGISTRATION_ENABLED_FOR.includes(userInfo?.email);
 
     const bulkUploadRef = useRef(null);
     const {
@@ -299,28 +301,30 @@ function DistributorDashboard() {
                     </>
                 )}
 
-                <div className="mt-10 border-t border-gray-200 pt-6">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-gray-900">Developer Testing Tools</h3>
-                        <button
-                            onClick={() => setShowDevTools(!showDevTools)}
-                            className="text-sm px-3 py-1 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50"
-                        >
-                            {showDevTools ? 'Hide Tools' : 'Show Tools'}
-                        </button>
-                    </div>
+                {showDevToolsForUser && (
+                    <div className="mt-10 border-t border-gray-200 pt-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-medium text-gray-900">Developer Testing Tools</h3>
+                            <button
+                                onClick={() => setShowDevTools(!showDevTools)}
+                                className="text-sm px-3 py-1 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50"
+                            >
+                                {showDevTools ? 'Hide Tools' : 'Show Tools'}
+                            </button>
+                        </div>
 
-                    {showDevTools && (
-                        <AppUserTestRegistration
-                            distributorId={distributorId}
-                            selectedApp={selectedApp}
-                            selectedSubAppId={selectedSubAppId}
-                            availableApps={apps}
-                            uniquePurchaseLink={uniquePurchaseLink}
-                            genericPurchaseLink={genericPurchaseLink}
-                        />
-                    )}
-                </div>
+                        {showDevTools && (
+                            <AppUserTestRegistration
+                                distributorId={distributorId}
+                                selectedApp={selectedApp}
+                                selectedSubAppId={selectedSubAppId}
+                                availableApps={apps}
+                                uniquePurchaseLink={uniquePurchaseLink}
+                                genericPurchaseLink={genericPurchaseLink}
+                            />
+                        )}
+                    </div>
+                )}
 
                 <InsertAppPurchaseOrder
                     orderNumber={orderNumber}
