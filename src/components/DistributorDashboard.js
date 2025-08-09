@@ -38,8 +38,8 @@ function DistributorDashboard() {
     const [statusFilter, setStatusFilter] = useState('');
     const itemsPerPage = 10;
     const [appUsersPage, setAppUsersPage] = useState(1);
-    const [appFilter, setAppFilter] = useState('');
-    const [appFilterImmediate, setAppFilterImmediate] = useState('');
+    const [subAppFilter, setSubAppFilter] = useState('');
+    const [subAppFilterImmediate, setSubAppFilterImmediate] = useState('');
     const [emailFilter, setEmailFilter] = useState('');
     const [emailFilterImmediate, setEmailFilterImmediate] = useState('');
     const [appUserOrderFilter, setAppUserOrderFilter] = useState('');
@@ -51,7 +51,7 @@ function DistributorDashboard() {
     const [selectedSubAppId, setSelectedSubAppId] = useState('');
     const [showDevTools, setShowDevTools] = useState(false);
 
-    const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
+    const setSubAppFilterDebounced = useDebounce((value) => setSubAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
 
@@ -83,7 +83,7 @@ function DistributorDashboard() {
         async (isFromSync) => {
             await Promise.all([
                 fetchPendingAppUsers({
-                    appFilter,
+                    subAppFilter,
                     emailFilter,
                     orderFilter: appUserOrderFilter,
                     statusFilter: appUserStatusFilter,
@@ -110,16 +110,12 @@ function DistributorDashboard() {
         generatingStates
     } = useAppPurchaseLink(setPermanentMessage);
 
-    const {
-        handleAppUserUpdate: updateAppUser,
-        isUpdating: isAppUserUpdating
-    } = useAppUserUpdate(
+    const { handleAppUserUpdate, isUpdating } = useAppUserUpdate(
         (message, updatedData) => {
-            setPermanentMessage({ type: 'success', content: message });
-            setShowAppUserEditModal(false);
+            setPermanentMessage({ type: 'success', content: `${message} - User: ${updatedData.email}` });
             setSelectedAppUser(null);
             fetchPendingAppUsers({
-                appFilter,
+                subAppFilter,
                 emailFilter,
                 orderFilter: appUserOrderFilter,
                 statusFilter: appUserStatusFilter,
@@ -127,7 +123,7 @@ function DistributorDashboard() {
             });
         },
         (errorMessage) => {
-            setPermanentMessage({ type: 'error', content: errorMessage });
+            setPermanentMessage({ type: 'error', content: `Update failed: ${errorMessage}` });
         }
     );
 
@@ -151,20 +147,20 @@ function DistributorDashboard() {
 
     useEffect(() => {
         console.log('Filters changed:', {
-            appFilter,
+            subAppFilter,
             emailFilter,
             appUserOrderFilter,
             appUserStatusFilter,
             appUserLinkTypeFilter
         });
         fetchPendingAppUsers({
-            appFilter,
+            subAppFilter,
             emailFilter,
             orderFilter: appUserOrderFilter,
             statusFilter: appUserStatusFilter,
             linkTypeFilter: appUserLinkTypeFilter
         });
-    }, [appFilter, emailFilter, appUserOrderFilter, appUserStatusFilter, appUserLinkTypeFilter]);
+    }, [subAppFilter, emailFilter, appUserOrderFilter, appUserStatusFilter, appUserLinkTypeFilter]);
 
     const fetchAvailableApps = async () => {
         try {
@@ -376,26 +372,26 @@ function DistributorDashboard() {
                 />
 
                 <PendingAppUsersGrid
-                    appUsers={pendingAppUsers}
+                    appUsers={Array.isArray(pendingAppUsers) ? pendingAppUsers : []}
                     onAppUserClick={(appUser) => {
                         setSelectedAppUser(appUser);
                         setShowAppUserEditModal(true);
                     }}
                     onRefresh={() => fetchPendingAppUsers({
-                        appFilter,
+                        subAppFilter,
                         emailFilter,
                         orderFilter: appUserOrderFilter,
                         statusFilter: appUserStatusFilter,
                         linkTypeFilter: appUserLinkTypeFilter
                     })}
-                    appFilterImmediate={appFilterImmediate}
+                    subAppFilterImmediate={subAppFilterImmediate}
                     emailFilterImmediate={emailFilterImmediate}
                     orderFilterImmediate={appUserOrderFilterImmediate}
                     statusFilter={appUserStatusFilter}
                     linkTypeFilter={appUserLinkTypeFilter}
-                    onAppFilterChange={(e) => {
-                        setAppFilterImmediate(e.target.value);
-                        setAppFilterDebounced(e.target.value);
+                    onSubAppFilterChange={(e) => {
+                        setSubAppFilterImmediate(e.target.value);
+                        setSubAppFilterDebounced(e.target.value);
                     }}
                     onEmailFilterChange={(e) => {
                         setEmailFilterImmediate(e.target.value);
@@ -407,7 +403,7 @@ function DistributorDashboard() {
                     }}
                     onStatusFilterChange={(e) => setAppUserStatusFilter(e.target.value)}
                     onLinkTypeFilterChange={(e) => {
-                        console.log('Link type filter changed:', e.target.value); // Debug log
+                        console.log('Link type filter changed:', e.target.value);
                         setAppUserLinkTypeFilter(e.target.value);
                     }}
                     currentPage={appUsersPage}
@@ -418,11 +414,12 @@ function DistributorDashboard() {
                         <Pagination
                             currentPage={appUsersPage}
                             setCurrentPage={setAppUsersPage}
-                            totalItems={pendingAppUsers.length}
+                            totalItems={(Array.isArray(pendingAppUsers) ? pendingAppUsers : []).length}
                             itemsPerPage={itemsPerPage}
                         />
                     }
                 />
+
             </div>
 
             {showAppUserEditModal && selectedAppUser && (
@@ -433,9 +430,12 @@ function DistributorDashboard() {
                         setSelectedAppUser(null);
                     }}
                     onSubmit={async (formData) => {
-                        await updateAppUser(selectedAppUser.AppId, selectedAppUser.Email, formData);
+                        await handleAppUserUpdate(selectedAppUser.AppId, selectedAppUser.Email, {
+                            ...formData,
+                            subAppId: selectedAppUser.SubAppId
+                        });
                     }}
-                    isSubmitting={isAppUserUpdating}
+                    isSubmitting={isUpdating}
                     availableApps={apps}
                 />
             )}

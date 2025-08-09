@@ -1,3 +1,4 @@
+// src/components/AppUserEditModal.js - MINIMAL FIX preserving original layout/style
 import React, { useState } from 'react';
 
 const AppUserEditModal = ({ appUser, onClose, onSubmit, isSubmitting = false, availableApps }) => {
@@ -8,7 +9,7 @@ const AppUserEditModal = ({ appUser, onClose, onSubmit, isSubmitting = false, av
         linkType: appUser?.LinkType || ''
     });
 
-    // Helper to determine available status options
+    // Helper to determine available status options (PRESERVED ORIGINAL)
     const getStatusOptions = () => {
         const options = [];
         options.push({ value: '', label: 'Select Status' });
@@ -34,6 +35,22 @@ const AppUserEditModal = ({ appUser, onClose, onSubmit, isSubmitting = false, av
         }));
     };
 
+    // ENHANCED: Submit handler that includes SubAppId (hidden from UI)
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // CRITICAL: Include SubAppId and composite key data for new table structure
+        const enhancedFormData = {
+            ...formData,
+            // Add required fields for Lambda function (not visible to user)
+            subAppId: appUser.SubAppId,
+            originalEmailSubAppId: `${appUser.Email}#${appUser.SubAppId}`
+        };
+
+        await onSubmit(enhancedFormData);
+    };
+
+    // PRESERVED: Exact original layout and styling
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg shadow-xl w-[500px]">
@@ -105,10 +122,7 @@ const AppUserEditModal = ({ appUser, onClose, onSubmit, isSubmitting = false, av
                         Cancel
                     </button>
                     <button
-                        onClick={async (e) => {
-                            e.preventDefault();
-                            await onSubmit(formData);
-                        }}
+                        onClick={handleSubmit}
                         disabled={isSubmitting || Object.keys(formData).every(key => formData[key] === appUser[key])}
                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
                     >
