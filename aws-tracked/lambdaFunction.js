@@ -84,18 +84,20 @@ async function handleVerifyEmail(body) {
                 message: 'Email and appId are required'
             });
         }
-
-        const result = await ddbDocClient.send(new GetCommand({
+        const result = await ddbDocClient.send(new QueryCommand({
             TableName: 'AppUsers',
-            Key: {
-                AppId: body.appId,
-                Email: body.email
+            IndexName: 'EmailIndex',
+            KeyConditionExpression: 'Email = :email AND AppId = :appId',
+            ExpressionAttributeValues: {
+                ':email': body.email,
+                ':appId': body.appId
             }
         }));
 
         return createResponse(200, {
-            exists: !!result.Item,
-            user: result.Item ? true : false
+            exists: !!(result.Items && result.Items.length > 0),
+            user: result.Items && result.Items.length > 0,
+            subAppCount: result.Items ? result.Items.length : 0  // NEW: Show how many subapps user is registered for
         });
     } catch (error) {
         return handleLambdaError(error, 'handleVerifyEmail');
@@ -104,24 +106,29 @@ async function handleVerifyEmail(body) {
 
 async function handleUpdateAppUser(body, event) {
     try {
-        if (!body.appId || !body.email) {
+        // ENHANCED: Add SubAppId requirement for new table structure
+        if (!body.appId || !body.email || !body.subAppId) {
             return createResponse(400, {
                 code: 'MISSING_REQUIRED_FIELDS',
-                message: 'App ID and email are required'
+                message: 'App ID, email, and SubApp ID are required'
             });
         }
 
         const distributorId = event.user.sub;
 
-        // First get the current user state
+        // NEW: Construct EmailSubAppId composite key for new table structure
+        const emailSubAppId = body.emailSubAppId || `${body.email}#${body.subAppId}`;
+
+        // FIXED: Use new composite key structure (was: {AppId, Email})
         const currentUser = await ddbDocClient.send(new GetCommand({
             TableName: 'AppUsers',
             Key: {
                 AppId: body.appId,
-                Email: body.email
+                EmailSubAppId: emailSubAppId // NEW: Composite key instead of Email
             }
         }));
 
+        // PRESERVED: Original user not found logic
         if (!currentUser.Item) {
             return createResponse(404, {
                 code: 'USER_NOT_FOUND',
@@ -129,6 +136,7 @@ async function handleUpdateAppUser(body, event) {
             });
         }
 
+        // PRESERVED: Original distributor permission check
         if (currentUser.Item.DistributorId !== distributorId) {
             return createResponse(403, {
                 code: 'FORBIDDEN',
@@ -136,7 +144,7 @@ async function handleUpdateAppUser(body, event) {
             });
         }
 
-        // Status change validation
+        // PRESERVED: Original status change validation
         if (body.status === 'active' &&
             currentUser.Item.LinkType === 'generic' &&
             currentUser.Item.Status === 'pending') {
@@ -146,16 +154,17 @@ async function handleUpdateAppUser(body, event) {
             });
         }
 
+        // PRESERVED: Original update expression building logic
         const updateExpressions = [];
         const expressionAttributeNames = {};
         const expressionAttributeValues = {};
 
-        // Map of fields that can be updated
+        // PRESERVED: Original updatable fields mapping
         const updatableFields = {
             status: 'Status'
         };
 
-        // Build update expression for each field that has a value
+        // PRESERVED: Original update expression construction
         Object.entries(updatableFields).forEach(([key, dbField]) => {
             if (body[key] !== undefined) {
                 updateExpressions.push(`#${key} = :${key}`);
@@ -164,16 +173,17 @@ async function handleUpdateAppUser(body, event) {
             }
         });
 
+        // PRESERVED: Original validation for empty updates
         if (updateExpressions.length === 0) {
             return createResponse(400, { message: 'No fields to update' });
         }
 
-        // Update the app user
+        // FIXED: Update using new composite key structure (was: {AppId, Email})
         const result = await ddbDocClient.send(new UpdateCommand({
             TableName: 'AppUsers',
             Key: {
                 AppId: body.appId,
-                Email: body.email
+                EmailSubAppId: emailSubAppId // NEW: Composite key instead of Email
             },
             UpdateExpression: 'SET ' + updateExpressions.join(', '),
             ExpressionAttributeNames: expressionAttributeNames,
@@ -181,6 +191,7 @@ async function handleUpdateAppUser(body, event) {
             ReturnValues: 'ALL_NEW'
         }));
 
+        // PRESERVED: Original success response format
         return createResponse(200, {
             message: 'App user updated successfully',
             appId: body.appId,
@@ -192,13 +203,8 @@ async function handleUpdateAppUser(body, event) {
         return handleLambdaError(error, 'handleUpdateAppUser');
     }
 }
-
 async function handleSyncAppUsers(event) {
     try {
-        // 1. Auth verification (matching other handlers)
-        // removed
-
-        // 2. Get pending orders for this distributor
         const distributorId = event.user.sub;
         const pendingOrdersResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'AppPurchaseOrders',
@@ -209,8 +215,6 @@ async function handleSyncAppUsers(event) {
                 ':distributorId': distributorId
             }
         }));
-
-        // 3. Get pending users for this distributor
         const pendingUsersResult = await ddbDocClient.send(new ScanCommand({
             TableName: 'AppUsers',
             FilterExpression: '#status = :pendingStatus AND DistributorId = :distributorId',
@@ -249,7 +253,7 @@ async function handleSyncAppUsers(event) {
                         TableName: 'AppUsers',
                         Key: {
                             AppId: matchingUser.AppId,
-                            Email: matchingUser.Email
+                            EmailSubAppId: matchingUser.EmailSubAppId  // ✅ CORRECT - Use composite key
                         },
                         UpdateExpression: 'SET #status = :activeStatus',
                         ExpressionAttributeNames: { '#status': 'Status' },
@@ -269,8 +273,6 @@ async function handleSyncAppUsers(event) {
         if (transactItems.length > 0) {
             await ddbDocClient.send(new TransactWriteCommand({ TransactItems: transactItems }));
         }
-
-        // 4. Enhanced response with detailed stats
         return createResponse(200, {
             code: 'SYNC_SUCCESS',
             message: `Sync completed. Updated ${matchedPairs} pairs.`,
@@ -287,20 +289,35 @@ async function handleSyncAppUsers(event) {
     }
 }
 
+// MINIMAL FIX: handleGetPendingAppUsers - Only adds subAppFilter, preserves ALL original logic
+// Replace existing handleGetPendingAppUsers function in lambdaFunction.js
+
 async function handleGetPendingAppUsers(event) {
     try {
-
+        // PRESERVED: Original distributor auth
         const distributorId = event.user.sub;
 
         console.log('Fetching pending app users');
-        const { appFilter, emailFilter, orderFilter, dateFilter, statusFilter, linkTypeFilter } = event.queryStringParameters || {};
 
+        // ENHANCED: Add subAppFilter to existing parameters (all others preserved)
+        const {
+            appFilter,
+            emailFilter,
+            orderFilter,
+            dateFilter,
+            statusFilter,
+            linkTypeFilter,
+            subAppFilter // NEW: Only addition
+        } = event.queryStringParameters || {};
+
+        // PRESERVED: Original filter building logic
         let filterExpression = ['DistributorId = :distributorId'];
         let expressionAttributeNames = {};
         let expressionAttributeValues = {
             ':distributorId': distributorId
         };
 
+        // PRESERVED: All original filter conditions exactly as-is
         if (appFilter) {
             filterExpression.push('AppId = :appFilter');
             expressionAttributeValues[':appFilter'] = appFilter;
@@ -332,23 +349,39 @@ async function handleGetPendingAppUsers(event) {
             expressionAttributeValues[':linkTypeFilter'] = linkTypeFilter;
         }
 
+        // NEW: Only addition - SubApp filter (same pattern as others)
+        if (subAppFilter) {
+            filterExpression.push('SubAppId = :subAppFilter');
+            expressionAttributeValues[':subAppFilter'] = subAppFilter;
+        }
+
+        // PRESERVED: Original scan parameters construction
         const scanParams = {
             TableName: 'AppUsers',
             FilterExpression: filterExpression.join(' AND '),
-            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
+            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ?
+                expressionAttributeNames : undefined,
             ExpressionAttributeValues: expressionAttributeValues
         };
 
-        console.log('Scan params:', JSON.stringify(scanParams, null, 2)); // Added for debugging
+        // PRESERVED: Original logging
+        console.log('Scan params:', JSON.stringify(scanParams, null, 2));
+
+        // PRESERVED: Original scan operation
         const scanResult = await ddbDocClient.send(new ScanCommand(scanParams));
 
+        // PRESERVED: Original logging
         console.log('App users fetched:', scanResult.Items.length);
+
+        // PRESERVED: Original return format (array directly, not wrapped in object)
         return createResponse(200, scanResult.Items);
     } catch (error) {
+        // PRESERVED: Original error handling
         console.error('Error fetching app users:', error);
         return createResponse(500, { message: 'Error fetching app users', error: error.message });
     }
 }
+
 async function handleFetchAvailableApps(event) {
     try {
         console.log('Processing fetchAvailableApps request');
@@ -540,6 +573,10 @@ async function handleGenerateAppPurchaseToken(body, event) {
         return handleLambdaError(error, 'handleGenerateAppPurchaseToken');
     }
 }
+
+// CRITICAL FIX: Replace existing handleAppLogin function in lambdaFunction.js
+// This version handles multiple subapp registrations per email
+
 async function handleAppLogin(body) {
     try {
         if (!body.appId || !body.email || !body.password) {
@@ -557,52 +594,78 @@ async function handleAppLogin(body) {
 
         const appName = appResult.Item?.Name;
 
-        // Existing user lookup code
-        const userResult = await ddbDocClient.send(new GetCommand({
+        // FIXED: Use EmailIndex GSI to find ALL registrations for this email in this app
+        const userQueryResult = await ddbDocClient.send(new QueryCommand({
             TableName: 'AppUsers',
-            Key: {
-                AppId: body.appId,
-                Email: body.email
+            IndexName: 'EmailIndex',
+            KeyConditionExpression: 'Email = :email AND AppId = :appId',
+            ExpressionAttributeValues: {
+                ':email': body.email,
+                ':appId': body.appId
             }
         }));
 
-        if (!userResult.Item || userResult.Item.Password !== body.password) {
+        console.log(`Found ${userQueryResult.Items?.length || 0} registrations for ${body.email} in app ${body.appId}`);
+
+        if (!userQueryResult.Items || userQueryResult.Items.length === 0) {
             return createResponse(401, {
                 code: 'INVALID_CREDENTIALS',
                 message: 'Invalid email or password'
             });
         }
 
-        if (userResult.Item.Status !== 'active' && userResult.Item.Status !== 'pending') {
+        // CRITICAL: Find the user registration with matching password
+        const validUser = userQueryResult.Items.find(user => user.Password === body.password);
+
+        if (!validUser) {
+            console.log(`Password mismatch for ${body.email}. Found ${userQueryResult.Items.length} registrations but none match password.`);
+            return createResponse(401, {
+                code: 'INVALID_CREDENTIALS',
+                message: 'Invalid email or password'
+            });
+        }
+
+        console.log(`Login successful for ${body.email} with SubAppId: ${validUser.SubAppId}`);
+
+        if (validUser.Status !== 'active' && validUser.Status !== 'pending') {
             return createResponse(403, {
                 code: 'ACCOUNT_INACTIVE',
                 message: 'Account is not active'
             });
         }
 
-        // Include SubAppId in JWT token
-        const token = jwt.sign(
-            {
-                sub: userResult.Item.Email,
-                appId: body.appId,
-                appName: appName,
-                subAppId: userResult.Item.SubAppId || 'all', // Default to 'all' if not set
-                status: userResult.Item.Status
-            },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRATION }
-        );
+        // ENHANCED: Build JWT token based on user's registrations
+        let tokenPayload = {
+            sub: validUser.Email,
+            appId: body.appId,
+            appName: appName,
+            status: validUser.Status
+        };
+
+        // Handle multiple subapp registrations
+        if (userQueryResult.Items.length === 1) {
+            // Single subapp registration - PRESERVED: original fallback logic
+            tokenPayload.subAppId = validUser.SubAppId || 'all';
+        } else {
+            // Multiple subapp registrations - set to 'registered' mode
+            tokenPayload.subAppId = 'registered';
+            tokenPayload.userRegisteredSubApps = userQueryResult.Items.map(item => item.SubAppId || 'all');
+        }
+
+        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
 
         return createResponse(200, {
             token,
             user: {
-                email: userResult.Item.Email,
-                status: userResult.Item.Status,
+                email: validUser.Email,
+                status: validUser.Status,
                 appName: appName,
-                subAppId: userResult.Item.SubAppId || 'all'
+                subAppId: tokenPayload.subAppId,
+                registeredSubApps: tokenPayload.userRegisteredSubApps || [validUser.SubAppId || 'all']
             }
         });
     } catch (error) {
+        console.error('Error in handleAppLogin:', error);
         return handleLambdaError(error, 'handleAppLogin');
     }
 }
@@ -784,6 +847,7 @@ async function handleGetSubAppsForApp(event) {
 async function handleVerifyAppPurchase(body) {
     console.log('Processing app purchase verification');
     try {
+        // PRESERVED: Original validation - NO CHANGES
         if (!body.token || !body.appId || !body.email || !body.password) {
             return createResponse(400, {
                 code: 'MISSING_REQUIRED_FIELDS',
@@ -791,7 +855,7 @@ async function handleVerifyAppPurchase(body) {
             });
         }
 
-        // Verify the purchase token
+        // PRESERVED: Original token verification - NO CHANGES
         const tokenResult = await ddbDocClient.send(new GetCommand({
             TableName: 'AppPurchaseTokens',
             Key: { Token: body.token }
@@ -804,7 +868,7 @@ async function handleVerifyAppPurchase(body) {
             });
         }
 
-        // Check token expiration
+        // PRESERVED: Original token expiration check - NO CHANGES
         if (new Date(tokenResult.Item.ExpiresAt) < new Date()) {
             return createResponse(400, {
                 code: 'TOKEN_EXPIRED',
@@ -812,7 +876,7 @@ async function handleVerifyAppPurchase(body) {
             });
         }
 
-        // Verify token status based on type
+        // PRESERVED: Original token status verification - NO CHANGES
         if ((tokenResult.Item.LinkType === 'unique' && tokenResult.Item.Status !== 'pending') ||
             (tokenResult.Item.LinkType === 'generic' && tokenResult.Item.Status !== 'active')) {
             return createResponse(400, {
@@ -821,16 +885,15 @@ async function handleVerifyAppPurchase(body) {
             });
         }
 
+        // PRESERVED: Original date and status logic - NO CHANGES
         const purchaseDate = new Date().toISOString();
-        // Set initial status based on link type - generic is always pending
         let purchaseStatus = tokenResult.Item.LinkType === 'unique' ? 'active' : 'pending';
 
-        // For generic links, only validate order number uniqueness within distributor scope
+        // PRESERVED: Original order number validation logic - NO CHANGES
         if (tokenResult.Item.LinkType === 'generic' && body.orderNumber) {
             try {
                 const sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
 
-                // Check if order number already used for another user
                 const existingUserScan = await ddbDocClient.send(new ScanCommand({
                     TableName: 'AppUsers',
                     FilterExpression: 'OrderNumber = :orderNumber AND DistributorId = :distributorId',
@@ -854,13 +917,18 @@ async function handleVerifyAppPurchase(body) {
             }
         }
 
+        // NEW: ONLY addition - construct EmailSubAppId for new table structure
+        const emailSubAppId = `${body.email}#${tokenResult.Item.SubAppId}`;
+
+        // ENHANCED: Transaction with EmailSubAppId added to existing Item structure
         const transactItems = [
             {
                 Put: {
                     TableName: 'AppUsers',
                     Item: {
                         AppId: body.appId,
-                        Email: body.email,
+                        EmailSubAppId: emailSubAppId, // NEW: Add composite key
+                        Email: body.email, // PRESERVED: Keep for backward compatibility and GSI
                         Password: body.password,
                         Status: purchaseStatus,
                         CreatedAt: purchaseDate,
@@ -868,14 +936,15 @@ async function handleVerifyAppPurchase(body) {
                         OrderNumber: body.orderNumber || null,
                         DistributorId: tokenResult.Item.DistributorId,
                         LinkType: tokenResult.Item.LinkType,
-                        SubAppId: tokenResult.Item.SubAppId // Include SubAppId in the user record
+                        SubAppId: tokenResult.Item.SubAppId // PRESERVED: Already existed
                     },
-                    ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(Email)'
+                    // ENHANCED: Update condition to use new composite key
+                    ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(EmailSubAppId)'
                 }
             }
         ];
 
-        // Update token status for unique links
+        // PRESERVED: Original token update logic for unique links - NO CHANGES
         if (tokenResult.Item.LinkType === 'unique') {
             transactItems.push({
                 Update: {
@@ -888,10 +957,12 @@ async function handleVerifyAppPurchase(body) {
             });
         }
 
+        // PRESERVED: Original transaction execution - NO CHANGES
         await ddbDocClient.send(new TransactWriteCommand({
             TransactItems: transactItems
         }));
 
+        // PRESERVED: Original success response - NO CHANGES
         return createResponse(200, {
             message: 'App registration successful',
             status: purchaseStatus,
