@@ -527,7 +527,17 @@ async function handleGenerateAppPurchaseToken(body, event) {
         // Generate token
         const token = crypto.randomBytes(16).toString('hex');
         const createdAt = new Date().toISOString();
-        const expiresAt = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)).toISOString(); // 30 days expiry
+
+        let expirationDays;
+        if (body.linkType === 'generic') {
+            expirationDays = 365; // 1 year for generic links
+        } else if (body.linkType === 'unique') {
+            expirationDays = 365;  // 3 months for unique links
+        } else {
+            expirationDays = 365;  // fallback
+        }
+
+        const expiresAt = new Date(Date.now() + (expirationDays * 24 * 60 * 60 * 1000)).toISOString();
 
         const tokenItem = {
             Token: token,
