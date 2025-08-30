@@ -2,11 +2,23 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWriteCommand, UpdateCommand, QueryCommand, BatchWriteCommand, BatchGetCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+
 const DEFAULT_BUDGET_TYPE = 'paycheck';
 // const bcrypt = require('bcryptjs');
 
 const ddbClient = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+
+const ses = {
+    sendEmail: (params) => {
+        const sesClient = new SESClient({});
+        const command = new SendEmailCommand(params);
+        return {
+            promise: () => sesClient.send(command)
+        };
+    }
+};
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -23,6 +35,11 @@ const headers = {
     "Expires": "0"
 };
 
+const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'users';
+const FROM_EMAIL = process.env.SES_FROM_EMAIL || 'noreply@smartylogos.com';
+const TOKEN_EXPIRY_HOURS = parseInt(process.env.TOKEN_EXPIRY_HOURS) || 1;
+const MAX_RESET_ATTEMPTS_PER_HOUR = parseInt(process.env.MAX_RESET_ATTEMPTS_PER_HOUR) || 3;
+
 const actionConfig = {
     // Public actions (no auth required)
     verifyEmail: { public: true },
@@ -32,6 +49,10 @@ const actionConfig = {
     verifyToken: { public: true },
     appLogin: { public: true },
     getPublicSubappInfo: { public: true },
+
+    sendPasswordReset: { public: true },
+    verifyResetToken: { public: true },
+    resetPassword: { public: true },
 
     // Owner only actions
     syncOrdersAndDistributors: { role: 'Owner' },
@@ -1136,6 +1157,208 @@ async function handleVerifyToken(event) {
     }
 }
 
+const checkPasswordResetRateLimit = async (email) => {
+    const rateLimitKey = `ratelimit:${email}:passwordReset:${new Date().toISOString().slice(0, 13)}`;
+
+    try {
+        // Store rate limit records in the same table but with a unique id pattern
+        const rateLimitItem = await ddbDocClient.send(new GetCommand({
+            TableName: USERS_TABLE,
+            Key: { id: rateLimitKey }
+        }));
+
+        const currentAttempts = rateLimitItem.Item ? rateLimitItem.Item.attempts : 0;
+
+        if (currentAttempts >= MAX_RESET_ATTEMPTS_PER_HOUR) {
+            return { allowed: false, attempts: currentAttempts };
+        }
+
+        await ddbDocClient.send(new PutCommand({
+            TableName: USERS_TABLE,
+            Item: {
+                id: rateLimitKey,
+                email: email,
+                attempts: currentAttempts + 1,
+                type: 'rateLimit',
+                ttl: Math.floor(Date.now() / 1000) + 3600
+            }
+        }));
+
+        return { allowed: true, attempts: currentAttempts + 1 };
+    } catch (error) {
+        console.error('Rate limit check error:', error);
+        return { allowed: true, attempts: 0 };
+    }
+};
+
+const findUserByEmail = async (email) => {
+    try {
+        // Your table uses 'id' as primary key, so we need to scan by email
+        const scanResult = await ddbDocClient.send(new ScanCommand({
+            TableName: USERS_TABLE,
+            FilterExpression: 'email = :email',
+            ExpressionAttributeValues: { ':email': email.toLowerCase() },
+            Limit: 1
+        }));
+
+        return scanResult.Items && scanResult.Items.length > 0 ? scanResult.Items[0] : null;
+    } catch (error) {
+        console.error('User lookup error:', error);
+        throw new Error('Database query failed');
+    }
+};
+
+const getPasswordResetEmailTemplate = (resetUrl) => ({
+    subject: 'Password Reset Request',
+    html: `
+    <!DOCTYPE html>
+    <html>
+      <body style="font-family: Arial, sans-serif;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Password Reset Request</h2>
+          <p>Click the button below to reset your password:</p>
+          <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">Reset Password</a>
+          <p>This link expires in ${TOKEN_EXPIRY_HOURS} hour(s).</p>
+          <p>If you didn't request this, please ignore this email.</p>
+        </div>
+      </body>
+    </html>
+  `
+});
+
+// 6. ADD these three handler functions (before exports.handler):
+
+async function handleSendPasswordReset(body) {
+    try {
+        const { email, resetToken, tokenExpiry, resetUrl } = body;
+
+        if (!email || !resetToken || !resetUrl) {
+            return createResponse(400, {
+                code: 'MISSING_FIELDS',
+                message: 'Email, token, and reset URL are required'
+            });
+        }
+
+        const rateLimit = await checkPasswordResetRateLimit(email);
+        if (!rateLimit.allowed) {
+            return createResponse(429, {
+                code: 'RATE_LIMIT_EXCEEDED',
+                message: 'Too many reset attempts. Please try again later.'
+            });
+        }
+
+        const user = await findUserByEmail(email);
+        if (!user) {
+            return createResponse(200, {
+                message: 'If the email exists, a reset link has been sent'
+            });
+        }
+
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: USERS_TABLE,
+            Key: { id: user.id },
+            UpdateExpression: 'SET resetToken = :token, resetTokenExpiry = :expiry',
+            ExpressionAttributeValues: {
+                ':token': resetToken,
+                ':expiry': tokenExpiry
+            }
+        }));
+
+        const template = getPasswordResetEmailTemplate(resetUrl);
+        await ses.sendEmail({
+            Source: FROM_EMAIL,
+            Destination: { ToAddresses: [email] },
+            Message: {
+                Subject: { Data: template.subject },
+                Body: { Html: { Data: template.html } }
+            }
+        }).promise();
+
+        return createResponse(200, { message: 'Password reset email sent' });
+
+    } catch (error) {
+        console.error('Send password reset error:', error);
+        return handleLambdaError(error, 'handleSendPasswordReset');
+    }
+}
+
+async function handleVerifyResetToken(body) {
+    try {
+        const { email, resetToken } = body;
+
+        if (!email || !resetToken) {
+            return createResponse(400, {
+                code: 'MISSING_FIELDS',
+                message: 'Email and token are required'
+            });
+        }
+
+        const user = await findUserByEmail(email);
+        if (!user || !user.resetToken || user.resetToken !== resetToken) {
+            return createResponse(400, {
+                code: 'INVALID_TOKEN',
+                message: 'Invalid token'
+            });
+        }
+
+        if (Date.now() > user.resetTokenExpiry) {
+            return createResponse(400, {
+                code: 'TOKEN_EXPIRED',
+                message: 'Token has expired'
+            });
+        }
+
+        return createResponse(200, { valid: true });
+
+    } catch (error) {
+        console.error('Verify token error:', error);
+        return handleLambdaError(error, 'handleVerifyResetToken');
+    }
+}
+
+async function handleResetPassword(body) {
+    try {
+        const { email, resetToken, newPasswordHash } = body;
+
+        if (!email || !resetToken || !newPasswordHash) {
+            return createResponse(400, {
+                code: 'MISSING_FIELDS',
+                message: 'Email, token, and password hash are required'
+            });
+        }
+
+        const verificationResult = await handleVerifyResetToken({ email, resetToken });
+        if (verificationResult.statusCode !== 200) {
+            return verificationResult;
+        }
+
+        // Get user again to have the id for the update
+        const user = await findUserByEmail(email);
+        if (!user) {
+            return createResponse(400, {
+                code: 'USER_NOT_FOUND',
+                message: 'User not found'
+            });
+        }
+
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: USERS_TABLE,
+            Key: { id: user.id },
+            UpdateExpression: 'SET password = :password, passwordUpdatedAt = :updatedAt REMOVE resetToken, resetTokenExpiry',
+            ExpressionAttributeValues: {
+                ':password': newPasswordHash,
+                ':updatedAt': new Date().toISOString()
+            }
+        }));
+
+        return createResponse(200, { message: 'Password reset successfully' });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        return handleLambdaError(error, 'handleResetPassword');
+    }
+}
+
 
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
@@ -1219,6 +1442,14 @@ exports.handler = async (event) => {
                 return await handleAppLogin(body);
             case 'getPublicSubappInfo':
                 return await handleGetPublicSubappInfo(event);
+
+            case 'sendPasswordReset':
+                return await handleSendPasswordReset(body);
+            case 'verifyResetToken':
+                return await handleVerifyResetToken(body);
+            case 'resetPassword':
+                return await handleResetPassword(body);
+
             // Owner actions
             case 'syncOrdersAndDistributors':
                 return await handleSyncOrdersAndDistributors(event);
