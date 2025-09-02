@@ -3,7 +3,7 @@ const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, TransactWri
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
-const DEFAULT_BUDGET_TYPE = 'paycheck';
+// const DEFAULT_BUDGET_TYPE = 'paycheck';
 // const bcrypt = require('bcryptjs');
 
 const ddbClient = new DynamoDBClient({});
@@ -35,7 +35,7 @@ const headers = {
     "Expires": "0"
 };
 
-const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'users';
+const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'AppUsers';
 const FROM_EMAIL = process.env.SES_FROM_EMAIL || 'noreply@smartylogos.com';
 const TOKEN_EXPIRY_HOURS = parseInt(process.env.TOKEN_EXPIRY_HOURS) || 1;
 const MAX_RESET_ATTEMPTS_PER_HOUR = parseInt(process.env.MAX_RESET_ATTEMPTS_PER_HOUR) || 3;
@@ -948,6 +948,37 @@ async function handleVerifyAppPurchase(body) {
             }
         }
 
+        // 🟢 PUT THE DUPLICATE EMAIL CHECK HERE 🟢
+        // (Right before the transaction items are built)
+
+        // Get app configuration to check allowDuplicateEmails setting
+        const appResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'Apps',
+            Key: { AppId: body.appId }
+        }));
+
+        if (appResult.Item && appResult.Item.allowDuplicateEmails === false) {
+            console.log(`Checking for existing email registration - duplicates not allowed for app ${body.appId}`);
+
+            const existingUserQuery = await ddbDocClient.send(new QueryCommand({
+                TableName: 'AppUsers',
+                IndexName: 'EmailIndex',
+                KeyConditionExpression: 'Email = :email AND AppId = :appId',
+                ExpressionAttributeValues: {
+                    ':email': body.email.toLowerCase(),
+                    ':appId': body.appId
+                }
+            }));
+
+            if (existingUserQuery.Items && existingUserQuery.Items.length > 0) {
+                console.log(`Registration rejected - email ${body.email} already exists for app ${body.appId}`);
+                return createResponse(409, {
+                    code: 'EMAIL_ALREADY_REGISTERED',
+                    message: 'This email is already registered for this application. Please log in instead.'
+                });
+            }
+        }
+
         // NEW: ONLY addition - construct EmailSubAppId for new table structure
         const emailSubAppId = `${body.email}#${tokenResult.Item.SubAppId}`;
 
@@ -1196,7 +1227,7 @@ const findUserByEmail = async (email) => {
         // Your table uses 'id' as primary key, so we need to scan by email
         const scanResult = await ddbDocClient.send(new ScanCommand({
             TableName: USERS_TABLE,
-            FilterExpression: 'email = :email',
+            FilterExpression: 'Email = :email',
             ExpressionAttributeValues: { ':email': email.toLowerCase() },
             Limit: 1
         }));
