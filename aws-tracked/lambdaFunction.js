@@ -69,6 +69,7 @@ const actionConfig = {
     fetchAvailableApps: { role: 'Distributor' },
     generatePurchaseToken: { role: 'Distributor' },
     insertAppPurchaseOrder: { role: 'Distributor' },
+    insertStoreWebhookOrder: { role: 'Distributor' },
     getAppPurchaseOrders: { role: 'Distributor' },
     updateAppUser: { role: 'Distributor' },
     bulkInsertAppPurchaseOrder: { role: 'Distributor' },
@@ -842,6 +843,123 @@ async function handleInsertAppPurchaseOrder(body, event) {
     }
 }
 
+// New separate handler for store webhooks (add to lambdaFunction.js)
+async function handleStoreWebhookOrder(body, event) {
+    console.log('Processing store webhook order');
+    console.log('Store webhook data:', JSON.stringify(body, null, 2));
+
+    try {
+        // Simple validation - just the essentials
+        if (!body.orderNumber) {
+            return createResponse(400, {
+                code: 'MISSING_ORDER_NUMBER',
+                message: 'Order number is required'
+            });
+        }
+
+        if (!body.email) {
+            return createResponse(400, {
+                code: 'MISSING_EMAIL',
+                message: 'Email is required'
+            });
+        }
+
+        if (!body.source) {
+            return createResponse(400, {
+                code: 'MISSING_SOURCE',
+                message: 'Source is required'
+            });
+        }
+
+        let sanitizedOrderNumber;
+        try {
+            sanitizedOrderNumber = sanitizeOrderNumber(body.orderNumber);
+        } catch (sanitizationError) {
+            return createResponse(400, {
+                code: 'INVALID_ORDER_NUMBER',
+                message: sanitizationError.message
+            });
+        }
+
+        const distributorId = event.user.sub;
+
+        // Check for duplicate
+        const scanResult = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'OrderNumber = :orderNumber AND DistributorId = :distributorId',
+            ExpressionAttributeValues: {
+                ':orderNumber': sanitizedOrderNumber,
+                ':distributorId': distributorId
+            }
+        }));
+
+        if (scanResult.Items && scanResult.Items.length > 0) {
+            return createResponse(409, {
+                code: 'DUPLICATE_ORDER',
+                message: 'Order number already exists for this distributor'
+            });
+        }
+
+        // Build simple item with store webhook fields
+        const itemToSave = {
+            OrderNumber: sanitizedOrderNumber,
+            CreatedAt: new Date().toISOString(),
+            Status: 'completed', // Store webhooks are completed purchases
+            DistributorId: distributorId,
+            Email: body.email.toLowerCase(),
+            Source: body.source
+        };
+
+        // Add optional fields if provided
+        if (body.customerName) {
+            itemToSave.CustomerName = body.customerName;
+        }
+
+        if (body.amount) {
+            itemToSave.Amount = body.amount;
+        }
+
+        if (body.offerTitle) {
+            itemToSave.ProductName = body.offerTitle;
+        }
+
+        if (body.transactionId) {
+            itemToSave.OriginalTransactionId = body.transactionId;
+        }
+
+        if (body.currency) {
+            itemToSave.Currency = body.currency;
+        }
+
+        // Create the order
+        await ddbDocClient.send(new PutCommand({
+            TableName: 'AppPurchaseOrders',
+            Item: itemToSave,
+            ConditionExpression: 'attribute_not_exists(OrderNumber)'
+        }));
+
+        console.log('✅ Store webhook order created:', {
+            orderNumber: sanitizedOrderNumber,
+            email: body.email,
+            source: body.source,
+            amount: body.amount
+        });
+
+        return createResponse(200, {
+            code: 'SUCCESS',
+            message: 'Store webhook order created successfully',
+            orderNumber: sanitizedOrderNumber,
+            email: body.email,
+            source: body.source,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Error in handleStoreWebhookOrder:', error);
+        return handleLambdaError(error, 'handleStoreWebhookOrder');
+    }
+}
+
 async function handleGetSubAppsForApp(event) {
     console.log("getSubAppsForApp called with:", {
         queryStringParameters: event.queryStringParameters,
@@ -1508,6 +1626,8 @@ exports.handler = async (event) => {
                 return await handleGenerateAppPurchaseToken(body, event);
             case 'insertAppPurchaseOrder':
                 return await handleInsertAppPurchaseOrder(body, event);
+            case 'insertStoreWebhookOrder':
+                return await handleStoreWebhookOrder(body, event);
             case 'getAppPurchaseOrders':
                 return await handleFetchAppPurchaseOrders(event);
             case 'updateAppUser':
