@@ -68,6 +68,7 @@ const actionConfig = {
     getPendingAppUsers: { role: 'Distributor' },
     fetchAvailableApps: { role: 'Distributor' },
     generatePurchaseToken: { role: 'Distributor' },
+    generateEmailPurchaseToken: { role: 'Distributor' },
     insertAppPurchaseOrder: { role: 'Distributor' },
     insertStoreWebhookOrder: { role: 'Distributor' },
     getAppPurchaseOrders: { role: 'Distributor' },
@@ -606,9 +607,9 @@ async function handleGenerateAppPurchaseToken(body, event) {
     }
 }
 
+
 // CRITICAL FIX: Replace existing handleAppLogin function in lambdaFunction.js
 // This version handles multiple subapp registrations per email
-
 async function handleAppLogin(body) {
     try {
         if (!body.appId || !body.email || !body.password) {
@@ -701,13 +702,14 @@ async function handleAppLogin(body) {
         return handleLambdaError(error, 'handleAppLogin');
     }
 }
+
 async function handleFetchAppPurchaseOrders(event) {
     try {
 
         const distributorId = event.user.sub;
 
         console.log('Fetching app purchase orders');
-        const { orderFilter, dateFilter, statusFilter } = event.queryStringParameters || {};
+        const { orderFilter, dateFilter, statusFilter, sourceFilter } = event.queryStringParameters || {};
 
         let filterExpression = ['DistributorId = :distributorId'];
         let expressionAttributeNames = {};
@@ -731,6 +733,12 @@ async function handleFetchAppPurchaseOrders(event) {
             expressionAttributeValues[':statusFilter'] = statusFilter;
         }
 
+        if (sourceFilter) {
+            filterExpression.push('#source = :sourceFilter');
+            expressionAttributeNames['#source'] = 'Source';
+            expressionAttributeValues[':sourceFilter'] = sourceFilter;
+        }
+
         const scanParams = {
             TableName: 'AppPurchaseOrders',
             FilterExpression: filterExpression.join(' AND '),
@@ -747,7 +755,6 @@ async function handleFetchAppPurchaseOrders(event) {
         return handleLambdaError(error, 'handleFetchAppPurchaseOrders');
     }
 }
-
 async function handleInsertAppPurchaseOrder(body, event) {
     console.log('Processing insert app purchase order request');
     try {
@@ -842,6 +849,7 @@ async function handleInsertAppPurchaseOrder(body, event) {
         return handleLambdaError(error, 'handleInsertAppPurchaseOrder');
     }
 }
+
 
 // New separate handler for store webhooks (add to lambdaFunction.js)
 async function handleStoreWebhookOrder(body, event) {
@@ -959,7 +967,6 @@ async function handleStoreWebhookOrder(body, event) {
         return handleLambdaError(error, 'handleStoreWebhookOrder');
     }
 }
-
 async function handleGetSubAppsForApp(event) {
     console.log("getSubAppsForApp called with:", {
         queryStringParameters: event.queryStringParameters,
@@ -1152,6 +1159,142 @@ async function handleVerifyAppPurchase(body) {
     } catch (error) {
         console.error('Error processing app purchase:', error);
         return handleLambdaError(error, 'handleVerifyAppPurchase');
+    }
+}
+async function handleGenerateEmailPurchaseToken(body, event) {
+    console.log('Generating new email registration token', {
+        receivedBody: body,
+        distributorId: body.distributorId,
+        hasAuth: !!event.headers.Authorization
+    });
+
+    try {
+        if (!body.linkType || !body.appId || !body.distributorId || !body.subAppId || !body.source) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Link type, app ID, distributor ID, subApp ID, and source are required'
+            });
+        }
+
+        const distributorId = event.user.sub;
+
+        if (distributorId !== body.distributorId) {
+            return createResponse(403, {
+                code: 'FORBIDDEN',
+                message: 'Cannot generate token for another distributor'
+            });
+        }
+
+        // Get app info (COPIED FROM WORKING FUNCTION)
+        const appResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'Apps',
+            Key: { AppId: body.appId }
+        }));
+
+        console.log('App lookup result:', {
+            found: !!appResult.Item,
+            status: appResult.Item?.Status
+        });
+
+        if (!appResult.Item || appResult.Item.Status !== 'active') {
+            return createResponse(403, {
+                code: 'APP_NOT_AVAILABLE',
+                message: 'App is not currently available for purchase'
+            });
+        }
+
+        // Verify the subAppId is valid for this app (COPIED FROM WORKING FUNCTION)
+        console.log('Verifying SubAppId validity using AppSubAppMapping table');
+        const mappingResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppSubAppMapping',
+            Key: {
+                AppId: body.appId,
+                SubAppId: body.subAppId
+            }
+        }));
+
+        if (!mappingResult.Item) {
+            return createResponse(400, {
+                code: 'INVALID_SUBAPP_ID',
+                message: 'The provided SubApp ID is not valid for this application'
+            });
+        }
+
+        // Verify the specific app is available for this distributor (COPIED FROM WORKING FUNCTION)
+        const appDistributorResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'DistributorApps',
+            Key: {
+                DistributorId: body.distributorId,
+                AppId: body.appId
+            }
+        }));
+
+        if (!appDistributorResult.Item) {
+            return createResponse(403, {
+                code: 'APP_NOT_AUTHORIZED',
+                message: 'Distributor is not authorized to sell this app'
+            });
+        }
+
+        // Validate source (NEW FOR EMAIL)
+        const validSources = ['kajabi', 'whop', 'stan'];
+        if (!validSources.includes(body.source)) {
+            return createResponse(400, {
+                code: 'INVALID_SOURCE',
+                message: 'Source must be one of: kajabi, whop, stan'
+            });
+        }
+
+        // Generate token (SAME AS WORKING FUNCTION)
+        const token = crypto.randomBytes(16).toString('hex');
+        const createdAt = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + (365 * 24 * 60 * 60 * 1000)).toISOString();
+
+        const tokenItem = {
+            Token: token,
+            CreatedAt: createdAt,
+            ExpiresAt: expiresAt,
+            LinkType: 'email', // CHANGED FOR EMAIL
+            AppId: body.appId,
+            SubAppId: body.subAppId,
+            DistributorId: body.distributorId,
+            Source: body.source, // NEW FOR EMAIL
+            Status: 'active'
+        };
+
+        await ddbDocClient.send(new PutCommand({
+            TableName: 'AppPurchaseTokens',
+            Item: tokenItem
+        }));
+
+        console.log('Email registration token generated:', {
+            token,
+            appId: body.appId,
+            subAppId: body.subAppId,
+            source: body.source, // NEW
+            distributorId: body.distributorId,
+            linkType: 'email',
+            status: tokenItem.Status
+        });
+
+        // SAME RESPONSE FORMAT AS WORKING FUNCTION
+        return createResponse(200, {
+            token,
+            expiresAt,
+            status: tokenItem.Status,
+            appDomain: appResult.Item.AppDomain, // NOW DEFINED!
+            subAppId: body.subAppId
+        });
+
+    } catch (error) {
+        console.error('Error generating email registration token:', error);
+        if (error.name === 'ValidationException') {
+            return createResponse(400, {
+                code: 'VALIDATION_ERROR',
+                message: 'Invalid data format provided'
+            });
+        }
+        return handleLambdaError(error, 'handleGenerateEmailPurchaseToken');
     }
 }
 function verifyToken(token) {
@@ -1624,6 +1767,8 @@ exports.handler = async (event) => {
                 return await handleFetchAvailableApps(event);
             case 'generatePurchaseToken':
                 return await handleGenerateAppPurchaseToken(body, event);
+            case 'generateEmailPurchaseToken':
+                return await handleGenerateEmailPurchaseToken(body, event);
             case 'insertAppPurchaseOrder':
                 return await handleInsertAppPurchaseOrder(body, event);
             case 'insertStoreWebhookOrder':

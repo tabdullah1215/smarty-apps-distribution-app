@@ -61,6 +61,12 @@ function DistributorDashboard() {
     const showDevToolsForUser = DEV_FEATURES.TEST_REGISTRATION_ENABLED_FOR.includes(userInfo?.email);
 
     const bulkUploadRef = useRef(null);
+
+    // const [emailRegistrationLink, setEmailRegistrationLink] = useState('');
+    const [copiedEmail, setCopiedEmail] = useState(false);
+    const [sourceFilter, setSourceFilter] = useState('');
+    const [selectedEmailSource, setSelectedEmailSource] = useState('kajabi');
+
     const {
         csvFile,
         isUploading,
@@ -72,7 +78,8 @@ function DistributorDashboard() {
             fetchPurchaseOrders({
                 orderFilter,
                 dateFilter,
-                statusFilter
+                statusFilter,
+                sourceFilter
             });
         },
         bulkUploadRef
@@ -92,7 +99,8 @@ function DistributorDashboard() {
                 fetchPurchaseOrders({
                     orderFilter,
                     dateFilter,
-                    statusFilter
+                    statusFilter,
+                    sourceFilter
                 }, isFromSync)
             ]);
         }
@@ -101,6 +109,7 @@ function DistributorDashboard() {
     const {
         uniquePurchaseLink,
         genericPurchaseLink,
+        emailRegistrationLink,
         copiedUnique,
         copiedGeneric,
         setCopiedUnique,
@@ -141,9 +150,10 @@ function DistributorDashboard() {
         fetchPurchaseOrders({
             orderFilter,
             dateFilter,
-            statusFilter
+            statusFilter,
+            sourceFilter
         });
-    }, [orderFilter, dateFilter, statusFilter]);
+    }, [orderFilter, dateFilter, statusFilter, sourceFilter]);
 
     useEffect(() => {
         console.log('Filters changed:', {
@@ -270,6 +280,7 @@ function DistributorDashboard() {
                             appId={selectedApp}
                             selectedSubAppId={selectedSubAppId}
                             onSubAppIdChange={setSelectedSubAppId}
+                            onChange={(e) => setSelectedSubAppId(e.target.value)}
                         />
                     )}
                 </div>
@@ -294,6 +305,43 @@ function DistributorDashboard() {
                             isGenerating={generatingStates.generic}
                             description="Requires order number verification"
                         />
+                        {selectedApp && selectedSubAppId && (
+                            <>
+                                {/* NEW: Email Registration Link Generator with Source Selection */}
+                                <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+                                    <h2 className="text-xl font-semibold mb-4">Email Registration Link</h2>
+                                    <p className="text-sm text-gray-600 mb-4">For store-based purchases (Kajabi, Whop, Stan, etc.)</p>
+
+                                    {/* Source Selection Dropdown */}
+                                    <div className="mb-4">
+                                        <label htmlFor="emailSourceSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Select Store Source
+                                        </label>
+                                        <select
+                                            id="emailSourceSelect"
+                                            value={selectedEmailSource}
+                                            onChange={(e) => setSelectedEmailSource(e.target.value)}
+                                            className="w-full p-2 border rounded-md"
+                                        >
+                                            <option value="kajabi">Kajabi</option>
+                                            <option value="whop">Whop</option>
+                                            <option value="stan">Stan</option>
+                                        </select>
+                                    </div>
+
+                                    <LinkGenerator
+                                        title={`Email Registration Link (${selectedEmailSource})`}
+                                        link={emailRegistrationLink}
+                                        copied={copiedEmail}
+                                        generateFn={() => generatePurchaseLink('email', selectedApp, selectedSubAppId, selectedEmailSource)}
+                                        copyFn={() => copyToClipboard(emailRegistrationLink, setCopiedEmail)}
+                                        isGenerating={generatingStates.email}
+                                        description={`Registration link for ${selectedEmailSource} store purchases`}
+                                    />
+                                </div>
+                            </>
+                        )}
+
                     </>
                 )}
 
@@ -347,17 +395,20 @@ function DistributorDashboard() {
                     onRefresh={() => fetchPurchaseOrders({
                         orderFilter,
                         dateFilter,
-                        statusFilter
+                        statusFilter,
+                        sourceFilter
                     })}
                     orderFilterImmediate={orderFilterImmediate}
                     dateFilter={dateFilter}
                     statusFilter={statusFilter}
+                    sourceFilter={sourceFilter}
                     onOrderFilterChange={(e) => {
                         setOrderFilterImmediate(e.target.value);
                         setOrderFilterDebounced(e.target.value);
                     }}
                     onDateFilterChange={(e) => setDateFilter(e.target.value)}
                     onStatusFilterChange={(e) => setStatusFilter(e.target.value)}
+                    onSourceFilterChange={(e) => setSourceFilter(e.target.value)}
                     currentPage={ordersPage}
                     itemsPerPage={itemsPerPage}
                     isLoading={isRefreshing}

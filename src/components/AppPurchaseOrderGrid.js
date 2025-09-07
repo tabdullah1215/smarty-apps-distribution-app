@@ -7,9 +7,11 @@ const AppPurchaseOrderGrid = ({
                                   orderFilterImmediate,
                                   dateFilter,
                                   statusFilter,
+                                  sourceFilter,
                                   onOrderFilterChange,
                                   onDateFilterChange,
                                   onStatusFilterChange,
+                                  onSourceFilterChange,
                                   currentPage,
                                   itemsPerPage,
                                   Pagination,
@@ -29,7 +31,7 @@ const AppPurchaseOrderGrid = ({
                     <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
                 </button>
             </div>
-            <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <input
                     type="text"
                     placeholder="Filter by Order #"
@@ -55,7 +57,8 @@ const AppPurchaseOrderGrid = ({
                         onFocus={(e) => e.target.showPicker()}
                     />
                     {!dateFilter && (
-                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                        <span
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
                             Filter by Date
                         </span>
                     )}
@@ -69,6 +72,19 @@ const AppPurchaseOrderGrid = ({
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="used">Used</option>
+                </select>
+                <select
+                    value={sourceFilter}
+                    onChange={onSourceFilterChange}
+                    className="p-2 border rounded"
+                    disabled={isLoading}
+                >
+                    <option value="">All Sources</option>
+                    <option value="native">Native</option>
+                    <option value="kajabi">Kajabi</option>
+                    <option value="whop">Whop</option>
+                    <option value="stan">Stan</option>
+                    <option value="manual">Manual</option>
                 </select>
             </div>
             <div className={`overflow-y-auto transition-all duration-200 ${
