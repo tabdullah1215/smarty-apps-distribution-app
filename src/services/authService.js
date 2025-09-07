@@ -22,7 +22,7 @@ axios.interceptors.response.use(
 );
 
 axios.interceptors.request.use((config) => {
-    console.log('Request Headers:', config.headers);
+    // console.log('Request Headers:', config.headers);
     return config;
 }, (error) => Promise.reject(error));
 

@@ -45,6 +45,7 @@ const actionConfig = {
     verifyEmail: { public: true },
     verifyCredentials: { public: true },
     verifyAppPurchase: { public: true },
+    verifyEmailAppPurchase: { public: true },
     registerDistributor: { public: true },
     verifyToken: { public: true },
     appLogin: { public: true },
@@ -912,10 +913,11 @@ async function handleStoreWebhookOrder(body, event) {
         const itemToSave = {
             OrderNumber: sanitizedOrderNumber,
             CreatedAt: new Date().toISOString(),
-            Status: 'completed', // Store webhooks are completed purchases
+            Status: 'pending',
             DistributorId: distributorId,
             Email: body.email.toLowerCase(),
-            Source: body.source
+            Source: body.source,
+            AppId: 'logo-generator'
         };
 
         // Add optional fields if provided
@@ -1161,6 +1163,246 @@ async function handleVerifyAppPurchase(body) {
         return handleLambdaError(error, 'handleVerifyAppPurchase');
     }
 }
+
+async function handleVerifyEmailAppPurchase(body) {
+    console.log('Processing email app purchase verification');
+    try {
+        // Same validation as handleVerifyAppPurchase
+        if (!body.token || !body.appId || !body.email || !body.password) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Token, app ID, email, and password are required'
+            });
+        }
+
+// Step 1: Check for duplicate email (CRITICAL FIRST)
+        console.log('Checking for duplicate email:', body.email);
+        const existingUserCheck = await ddbDocClient.send(new QueryCommand({
+            TableName: 'AppUsers',
+            IndexName: 'EmailIndex',
+            KeyConditionExpression: 'Email = :email AND AppId = :appId',
+            ExpressionAttributeValues: {
+                ':email': body.email.toLowerCase(),
+                ':appId': body.appId
+            }
+        }));
+
+        if (existingUserCheck.Items && existingUserCheck.Items.length > 0) {
+            console.log('Duplicate email found:', body.email);
+            return createResponse(400, {
+                code: 'EMAIL_ALREADY_REGISTERED',
+                message: 'This email address is already registered. Please use the login page or try password reset if you\'ve forgotten your credentials.'
+            });
+        }
+
+        console.log('Email available for registration:', body.email);
+
+// Step 2: Token verification and source extraction
+        const tokenResult = await ddbDocClient.send(new GetCommand({
+            TableName: 'AppPurchaseTokens',
+            Key: { Token: body.token }
+        }));
+
+        if (!tokenResult.Item) {
+            return createResponse(400, {
+                code: 'INVALID_TOKEN',
+                message: 'Invalid purchase token'
+            });
+        }
+
+// Step 3: Debug purchase record matching
+        console.log('=== DEBUGGING PURCHASE MATCH ===');
+        console.log('Search criteria:', {
+            email: body.email.toLowerCase(),
+            appId: body.appId,
+            source: tokenResult.Item.Source,
+            status: 'pending'
+        });
+
+// First, let's see what purchase records exist for this email
+        const allPurchasesForEmail = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'Email = :email',
+            ExpressionAttributeValues: {
+                ':email': body.email.toLowerCase()
+            }
+        }));
+
+        console.log('All purchases for email:', JSON.stringify(allPurchasesForEmail.Items, null, 2));
+
+// Now check specifically for appId match
+        const purchasesForEmailAndApp = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'Email = :email AND AppId = :appId',
+            ExpressionAttributeValues: {
+                ':email': body.email.toLowerCase(),
+                ':appId': body.appId
+            }
+        }));
+
+        console.log('Purchases for email + appId:', JSON.stringify(purchasesForEmailAndApp.Items, null, 2));
+
+// Original triple validation search
+        const purchaseCheck = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'Email = :email AND AppId = :appId AND #source = :source AND #status = :status',
+            ExpressionAttributeNames: {
+                '#source': 'Source',
+                '#status': 'Status'
+            },
+            ExpressionAttributeValues: {
+                ':email': body.email.toLowerCase(),
+                ':appId': body.appId,
+                ':source': tokenResult.Item.Source,
+                ':status': 'pending'
+            }
+        }));
+
+        console.log('Triple validation result:', JSON.stringify(purchaseCheck.Items, null, 2));
+        console.log('=== END DEBUGGING ===');
+
+        const matchingPurchase = purchaseCheck.Items && purchaseCheck.Items.length > 0 ? purchaseCheck.Items[0] : null;
+        const userStatus = matchingPurchase ? 'active' : 'pending';
+
+        console.log('Purchase match result:', {
+            found: !!matchingPurchase,
+            email: body.email,
+            appId: body.appId,  // NOW LOGGED
+            source: tokenResult.Item.Source,
+            purchaseCount: purchaseCheck.Items?.length || 0
+        });
+
+// Step 4: Create user record
+        console.log('Creating user record with status:', userStatus);
+
+// Construct EmailSubAppId for composite key (following existing pattern)
+        const emailSubAppId = `${body.email}#${tokenResult.Item.SubAppId}`;
+
+// Create user in AppUsers table
+        const userItem = {
+            AppId: body.appId,
+            EmailSubAppId: emailSubAppId,
+            Email: body.email.toLowerCase(),
+            Password: body.password,
+            Status: userStatus,  // 'active' if purchase match, 'pending' if not
+            CreatedAt: new Date().toISOString(),
+            Token: body.token,
+            OrderNumber: matchingPurchase?.OrderNumber || null,
+            DistributorId: tokenResult.Item.DistributorId,
+            LinkType: tokenResult.Item.LinkType,
+            SubAppId: tokenResult.Item.SubAppId,
+            Source: tokenResult.Item.Source  // Track registration source
+        };
+
+        await ddbDocClient.send(new PutCommand({
+            TableName: 'AppUsers',
+            Item: userItem,
+            ConditionExpression: 'attribute_not_exists(AppId) AND attribute_not_exists(EmailSubAppId)'
+        }));
+
+        console.log('User created successfully:', {
+            email: body.email,
+            status: userStatus,
+            subAppId: tokenResult.Item.SubAppId,
+            source: tokenResult.Item.Source
+        });
+
+// Step 5: Update purchase record status if match found
+
+        // Step 5: Update purchase record status using same triple criteria
+        let updateDebug = { attempted: false, error: null, results: [] };
+
+        if (matchingPurchase) {
+            updateDebug.attempted = true;
+            console.log('Updating purchase record status using triple match criteria');
+
+            try {
+                // Use the same criteria that found the record to update it
+                const updateResult = await ddbDocClient.send(new ScanCommand({
+                    TableName: 'AppPurchaseOrders',
+                    FilterExpression: 'Email = :email AND AppId = :appId AND #source = :source AND #status = :status',
+                    ExpressionAttributeNames: {
+                        '#source': 'Source',
+                        '#status': 'Status'
+                    },
+                    ExpressionAttributeValues: {
+                        ':email': body.email.toLowerCase(),
+                        ':appId': body.appId,
+                        ':source': tokenResult.Item.Source,
+                        ':status': 'pending'
+                    }
+                }));
+
+                updateDebug.scanResults = updateResult.Items;
+                updateDebug.itemCount = updateResult.Items?.length || 0;
+
+                // Update each matching record to 'used' status
+                if (updateResult.Items && updateResult.Items.length > 0) {
+                    for (const item of updateResult.Items) {
+                        if (item.OrderNumber) {
+                            await ddbDocClient.send(new UpdateCommand({
+                                TableName: 'AppPurchaseOrders',
+                                Key: {
+                                    DistributorId: item.DistributorId,  // ADD PARTITION KEY
+                                    OrderNumber: item.OrderNumber       // SORT KEY
+                                },
+                                UpdateExpression: 'SET #status = :used',
+                                ExpressionAttributeNames: {
+                                    '#status': 'Status'
+                                },
+                                ExpressionAttributeValues: {
+                                    ':used': 'used'
+                                }
+                            }));
+                            updateDebug.results.push({ orderNumber: item.OrderNumber, status: 'updated' });
+                        } else {
+                            updateDebug.results.push({ orderNumber: 'undefined', status: 'skipped' });
+                        }
+                    }
+                }
+
+            } catch (updateError) {
+                updateDebug.error = updateError.message;
+            }
+        }
+
+        return createResponse(200, {
+            code: 'USER_CREATED',
+            message: 'User registration successful',
+            userStatus: userStatus,
+            purchaseMatch: !!matchingPurchase,
+            email: body.email,
+            subAppId: tokenResult.Item.SubAppId,
+            // ADD ALL THE DEBUG INFO TO THE RESPONSE
+            debug: {
+                matchingPurchase: matchingPurchase,
+                updateDebug: updateDebug,
+                scanCriteria: {
+                    email: body.email.toLowerCase(),
+                    appId: body.appId,
+                    source: tokenResult.Item.Source,
+                    status: 'pending'
+                }
+            }
+        });
+
+        return createResponse(200, {
+            code: 'USER_CREATED',
+            message: 'User registration successful',
+            userStatus: userStatus,
+            purchaseMatch: !!matchingPurchase,
+            email: body.email,
+            subAppId: tokenResult.Item.SubAppId,
+            debug: true
+        });
+
+
+    } catch (error) {
+        console.error('Error processing email app purchase:', error);
+        return handleLambdaError(error, 'handleVerifyEmailAppPurchase');
+    }
+}
+
 async function handleGenerateEmailPurchaseToken(body, event) {
     console.log('Generating new email registration token', {
         receivedBody: body,
@@ -1726,6 +1968,8 @@ exports.handler = async (event) => {
                 return await handleVerifyCredentials(body);
             case 'verifyAppPurchase':
                 return await handleVerifyAppPurchase(body);
+            case 'verifyEmailAppPurchase':
+                return await handleVerifyEmailAppPurchase(body);
             case 'registerDistributor':
                 return await handleRegisterDistributor(body);
             case 'verifyToken':
