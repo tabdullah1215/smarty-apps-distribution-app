@@ -38,8 +38,8 @@ function DistributorDashboard() {
     const [statusFilter, setStatusFilter] = useState('');
     const itemsPerPage = 10;
     const [appUsersPage, setAppUsersPage] = useState(1);
-    const [subAppFilter, setSubAppFilter] = useState('');
-    const [subAppFilterImmediate, setSubAppFilterImmediate] = useState('');
+    // const [subAppFilter, setSubAppFilter] = useState('');
+    // const [subAppFilterImmediate, setSubAppFilterImmediate] = useState('');
     const [emailFilter, setEmailFilter] = useState('');
     const [emailFilterImmediate, setEmailFilterImmediate] = useState('');
     const [appUserOrderFilter, setAppUserOrderFilter] = useState('');
@@ -51,7 +51,11 @@ function DistributorDashboard() {
     const [selectedSubAppId, setSelectedSubAppId] = useState('');
     const [showDevTools, setShowDevTools] = useState(false);
 
-    const setSubAppFilterDebounced = useDebounce((value) => setSubAppFilter(value), 500);
+    const [appFilter, setAppFilter] = useState('');
+    const [appFilterImmediate, setAppFilterImmediate] = useState('');
+    const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
+
+    // const setSubAppFilterDebounced = useDebounce((value) => setSubAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
 
@@ -90,7 +94,7 @@ function DistributorDashboard() {
         async (isFromSync) => {
             await Promise.all([
                 fetchPendingAppUsers({
-                    subAppFilter,
+                    appFilter,
                     emailFilter,
                     orderFilter: appUserOrderFilter,
                     statusFilter: appUserStatusFilter,
@@ -124,7 +128,7 @@ function DistributorDashboard() {
             setPermanentMessage({ type: 'success', content: `${message} - User: ${updatedData.email}` });
             setSelectedAppUser(null);
             fetchPendingAppUsers({
-                subAppFilter,
+                appFilter,
                 emailFilter,
                 orderFilter: appUserOrderFilter,
                 statusFilter: appUserStatusFilter,
@@ -157,20 +161,20 @@ function DistributorDashboard() {
 
     useEffect(() => {
         console.log('Filters changed:', {
-            subAppFilter,
+            appFilter,
             emailFilter,
             appUserOrderFilter,
             appUserStatusFilter,
             appUserLinkTypeFilter
         });
         fetchPendingAppUsers({
-            subAppFilter,
+            appFilter,
             emailFilter,
             orderFilter: appUserOrderFilter,
             statusFilter: appUserStatusFilter,
             linkTypeFilter: appUserLinkTypeFilter
         });
-    }, [subAppFilter, emailFilter, appUserOrderFilter, appUserStatusFilter, appUserLinkTypeFilter]);
+    }, [appFilter, emailFilter, appUserOrderFilter, appUserStatusFilter, appUserLinkTypeFilter]);
 
     const fetchAvailableApps = async () => {
         try {
@@ -429,20 +433,20 @@ function DistributorDashboard() {
                         setShowAppUserEditModal(true);
                     }}
                     onRefresh={() => fetchPendingAppUsers({
-                        subAppFilter,
+                        appFilter,
                         emailFilter,
                         orderFilter: appUserOrderFilter,
                         statusFilter: appUserStatusFilter,
                         linkTypeFilter: appUserLinkTypeFilter
                     })}
-                    subAppFilterImmediate={subAppFilterImmediate}
+                    appFilterImmediate={appFilterImmediate}
                     emailFilterImmediate={emailFilterImmediate}
                     orderFilterImmediate={appUserOrderFilterImmediate}
                     statusFilter={appUserStatusFilter}
                     linkTypeFilter={appUserLinkTypeFilter}
-                    onSubAppFilterChange={(e) => {
-                        setSubAppFilterImmediate(e.target.value);
-                        setSubAppFilterDebounced(e.target.value);
+                    onAppFilterChange={(e) => {
+                        setAppFilterImmediate(e.target.value);
+                        setAppFilterDebounced(e.target.value);
                     }}
                     onEmailFilterChange={(e) => {
                         setEmailFilterImmediate(e.target.value);

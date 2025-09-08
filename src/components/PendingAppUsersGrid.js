@@ -3,36 +3,58 @@ import React from 'react';
 import { RefreshCw } from 'lucide-react';
 
 // Simple helper to make SubAppIds more readable
-const formatSubAppName = (subAppId) => {
-    if (!subAppId) return 'Unknown SubApp';
 
-    // Simple mapping for common SubApp types
-    const nameMap = {
-        'paycheck': 'Paycheck Budget Tracker',
-        'business': 'Business Budget Tracker',
-        'custom': 'Custom Budget Tracker',
-        'savings': 'Savings Goals',
-        'premium': 'Logo Generator Premium',
-        'basic': 'Basic Tracker App',
-        'all': 'All Budget Trackers',
-        'default': 'Default Tracker App',
-        'journey': 'Habit Journeys'
+const formatAppName = (appId) => {
+    if (!appId) return 'Unknown App';
+
+    // Mapping for AppIds to friendly names
+    const appNameMap = {
+        'logo-generator': 'Logo Generator',
+        'budget-tracker': 'Budget Tracker',
+        'habit-tracker': 'Habit Tracker',
+        'paycheck-app': 'Paycheck App',
+        'business-tools': 'Business Tools',
+        'savings-app': 'Savings App'
     };
 
-    return nameMap[subAppId] ||
-        subAppId.charAt(0).toUpperCase() + subAppId.slice(1).replace(/[-_]/g, ' ');
+    return appNameMap[appId] ||
+        appId.split('-').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+};
+const formatSubAppName = (subAppId) => {
+    if (!subAppId) return '';
+
+    const subAppMap = {
+        'prime': 'Premium',
+        'basic': 'Basic',
+        'premium': 'Premium',
+        'standard': 'Standard',
+        'pro': 'Pro',
+        'free': 'Free',
+        'trial': 'Trial',
+        'paycheck': 'Paycheck',
+        'business': 'Business',
+        'custom': 'Custom',
+        'savings': 'Savings',
+        'journey': 'Journey',
+        'all': 'All Access'
+    };
+
+    return subAppMap[subAppId] ||
+        subAppId.charAt(0).toUpperCase() + subAppId.slice(1);
 };
 
 const PendingAppUsersGrid = ({
                                  appUsers,
                                  onAppUserClick,
                                  onRefresh,
-                                 subAppFilterImmediate, // CHANGED: from appFilterImmediate
+                                 appFilterImmediate,        // CHANGED: back to appFilterImmediate
                                  emailFilterImmediate,
                                  orderFilterImmediate,
                                  statusFilter,
                                  linkTypeFilter,
-                                 onSubAppFilterChange, // CHANGED: from onAppFilterChange
+                                 onAppFilterChange,         // CHANGED: back to onAppFilterChange
                                  onEmailFilterChange,
                                  onOrderFilterChange,
                                  onStatusFilterChange,
@@ -41,17 +63,28 @@ const PendingAppUsersGrid = ({
                                  itemsPerPage,
                                  Pagination,
                                  isLoading,
-                                 availableApps // PRESERVED: for backward compatibility
+                                 availableApps, // PRESERVED: for backward compatibility
+                                    allAppUsers
                              }) => {
 
-    // NEW: Extract unique SubAppIds from current data for filter dropdown
-    const availableSubApps = React.useMemo(() => {
+    // 3. UPDATE available apps logic (extract unique AppIds instead of SubAppIds):
+    const availableAppsList = React.useMemo(() => {
+
+        if (availableApps && Array.isArray(availableApps)) {
+            const uniqueAppIds = [...new Set(availableApps.map(user => user.AppId).filter(Boolean))];
+            return uniqueAppIds.map(appId => ({
+                AppId: appId,
+                AppName: formatAppName(appId)
+            }));
+        }
+
         if (!Array.isArray(appUsers)) return [];
 
-        const uniqueSubAppIds = [...new Set(appUsers.map(user => user.SubAppId).filter(Boolean))];
-        return uniqueSubAppIds.map(subAppId => ({
-            SubAppId: subAppId,
-            SubAppName: formatSubAppName(subAppId)
+        // Get unique AppIds from current data
+        const uniqueAppIds = [...new Set(appUsers.map(user => user.AppId).filter(Boolean))];
+        return uniqueAppIds.map(appId => ({
+            AppId: appId,
+            AppName: formatAppName(appId)
         }));
     }, [appUsers]);
 
@@ -61,7 +94,7 @@ const PendingAppUsersGrid = ({
                 <div>
                     <h2 className="text-xl font-semibold min-w-[120px]">App Users</h2>
                     <p className="text-sm text-gray-600 mt-1">
-                        Showing {statusFilter === 'pending' ? 'pending' : 'all'} users by SubApp
+                        Showing {statusFilter === 'pending' ? 'pending' : 'all'} users by App
                     </p>
                 </div>
                 <button
@@ -79,14 +112,14 @@ const PendingAppUsersGrid = ({
             <div className="mb-4 grid grid-cols-2 md:grid-cols-5 gap-4">
                 {/* NEW: SubApp filter (replaces App filter) */}
                 <select
-                    value={subAppFilterImmediate || ''}
-                    onChange={onSubAppFilterChange}
+                    value={appFilterImmediate  || ''}
+                    onChange={onAppFilterChange}
                     className="p-2 border rounded font-medium"
                 >
                     <option value="">All Apps</option>
-                    {availableSubApps.map(subApp => (
-                        <option key={subApp.SubAppId} value={subApp.SubAppId}>
-                            {subApp.SubAppName}
+                    {availableAppsList.map(subApp => (
+                        <option key={subApp.AppId} value={subApp.AppId}>
+                            {subApp.AppName}
                         </option>
                     ))}
                 </select>
@@ -154,6 +187,7 @@ const PendingAppUsersGrid = ({
                     <option value="">All Link Types</option>
                     <option value="unique">Unique</option>
                     <option value="generic">Generic</option>
+                    <option value="email">Email</option>
                 </select>
             </div>
 
@@ -183,15 +217,21 @@ const PendingAppUsersGrid = ({
                                         onClick={() => onAppUserClick(user)}
                                         className="text-blue-600 hover:text-blue-800 hover:underline text-left"
                                     >
-                                        {/* ENHANCED: Show formatted SubApp name */}
-                                        {formatSubAppName(user.SubAppId)}
-                                    </button>
-                                    {/* NEW: Show SubAppId as subtitle for technical reference */}
-                                    {user.SubAppId && (
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            ID: {user.SubAppId}
+                                        {/* PRIMARY: Show AppId (main app name) */}
+                                        <div className="font-medium">
+                                            {formatAppName(user.AppId)}
                                         </div>
-                                    )}
+                                        {/* SECONDARY: Show SubAppId (plan/tier) */}
+                                        {user.SubAppId && (
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {formatSubAppName(user.SubAppId)} Plan
+                                            </div>
+                                        )}
+                                    </button>
+                                    {/* TECHNICAL: Show IDs for reference */}
+                                    <div className="text-xs text-gray-400 mt-1">
+                                        {user.AppId}{user.SubAppId ? ` • ${user.SubAppId}` : ''}
+                                    </div>
                                 </td>
                                 <td className="border p-2">{user.Email}</td>
                                 <td className="border p-2">{user.OrderNumber || 'N/A'}</td>
@@ -216,7 +256,7 @@ const PendingAppUsersGrid = ({
                         No app users found
                         {statusFilter && ` with status: ${statusFilter}`}
                         {linkTypeFilter && ` and link type: ${linkTypeFilter}`}
-                        {subAppFilterImmediate && ` for SubApp: ${formatSubAppName(subAppFilterImmediate)}`}
+                        {appFilterImmediate  && ` for SubApp: ${formatSubAppName(appFilterImmediate)}`}
                         {emailFilterImmediate && ` matching email: ${emailFilterImmediate}`}
                         {orderFilterImmediate && ` with order: ${orderFilterImmediate}`}
                     </div>
