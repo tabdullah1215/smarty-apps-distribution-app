@@ -313,9 +313,6 @@ async function handleSyncAppUsers(event) {
     }
 }
 
-// MINIMAL FIX: handleGetPendingAppUsers - Only adds subAppFilter, preserves ALL original logic
-// Replace existing handleGetPendingAppUsers function in lambdaFunction.js
-
 async function handleGetPendingAppUsers(event) {
     try {
         // PRESERVED: Original distributor auth
@@ -704,20 +701,50 @@ async function handleAppLogin(body) {
     }
 }
 
+// BUSINESS LOGIC PRESERVED - Fixed handleFetchAppPurchaseOrders function for aws-tracked/lambdaFunction.js
+// Replace the existing function with this corrected version
+// ONLY CHANGE: Switch from Scan to Query operation for optimal DynamoDB performance
+
+// COMPLETE handleFetchAppPurchaseOrders - Preserves ALL original logic + adds safety limits
+// Enhanced handleFetchAppPurchaseOrders - Supports new filters: appIdFilter, customerNameFilter, productNameFilter
 async function handleFetchAppPurchaseOrders(event) {
     try {
-
+        // PRESERVED: Original authentication logic
         const distributorId = event.user.sub;
 
+        // PRESERVED: Original logging exactly as-is
         console.log('Fetching app purchase orders');
-        const { orderFilter, dateFilter, statusFilter, sourceFilter } = event.queryStringParameters || {};
 
-        let filterExpression = ['DistributorId = :distributorId'];
+        // ENHANCED: Extended query parameter extraction to include new filters
+        const {
+            orderFilter,
+            dateFilter,
+            statusFilter,
+            sourceFilter,
+            appIdFilter,        // NEW
+            customerNameFilter, // NEW
+            productNameFilter   // NEW
+        } = event.queryStringParameters || {};
+
+        // Log all filters for debugging
+        console.log('Applied filters:', {
+            orderFilter,
+            dateFilter,
+            statusFilter,
+            sourceFilter,
+            appIdFilter,        // NEW
+            customerNameFilter, // NEW
+            productNameFilter   // NEW
+        });
+
+        // PRESERVED: Original filter building logic - moved DistributorId to KeyConditionExpression only
+        let filterExpression = []; // CHANGE: No longer starts with DistributorId (moved to KeyConditionExpression)
         let expressionAttributeNames = {};
         let expressionAttributeValues = {
-            ':distributorId': distributorId
+            ':distributorId': distributorId // PRESERVED: Still in expressionAttributeValues for KeyConditionExpression
         };
 
+        // PRESERVED: All original filter conditions exactly as-is
         if (orderFilter) {
             filterExpression.push('contains(OrderNumber, :orderFilter)');
             expressionAttributeValues[':orderFilter'] = orderFilter;
@@ -740,18 +767,82 @@ async function handleFetchAppPurchaseOrders(event) {
             expressionAttributeValues[':sourceFilter'] = sourceFilter;
         }
 
-        const scanParams = {
-            TableName: 'AppPurchaseOrders',
-            FilterExpression: filterExpression.join(' AND '),
-            ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
-            ExpressionAttributeValues: Object.keys(expressionAttributeValues).length > 0 ? expressionAttributeValues : undefined
-        };
+        // NEW: AppId filter
+        if (appIdFilter) {
+            filterExpression.push('AppId = :appIdFilter');
+            expressionAttributeValues[':appIdFilter'] = appIdFilter;
+        }
 
-        const scanResult = await ddbDocClient.send(new ScanCommand(scanParams));
+        // NEW: Customer Name filter (contains search for partial matches)
+        if (customerNameFilter) {
+            filterExpression.push('contains(CustomerName, :customerNameFilter)');
+            expressionAttributeValues[':customerNameFilter'] = customerNameFilter;
+        }
 
-        console.log('App purchase orders fetched:', scanResult.Items.length);
-        return createResponse(200, scanResult.Items);
+        // NEW: Product Name filter (contains search for partial matches)
+        if (productNameFilter) {
+            filterExpression.push('contains(ProductName, :productNameFilter)');
+            expressionAttributeValues[':productNameFilter'] = productNameFilter;
+        }
+
+        // ADDED: Safety limits to prevent runaway queries
+        let allItems = [];
+        let lastEvaluatedKey = undefined;
+        let pageCount = 0;
+        const MAX_PAGES = 100; // Safety limit - adjust based on your needs
+        const MAX_ITEMS = 10000; // Safety limit - adjust based on your needs
+
+        do {
+            pageCount++;
+
+            // ADDED: Safety check for pages
+            if (pageCount > MAX_PAGES) {
+                console.warn(`⚠️ Hit max pages limit (${MAX_PAGES}) for distributor ${distributorId}. Consider implementing server-side pagination.`);
+                break;
+            }
+
+            // PRESERVED: Original query params building logic exactly as-is
+            const queryParams = {
+                TableName: 'AppPurchaseOrders',
+                KeyConditionExpression: 'DistributorId = :distributorId', // MOVED: From FilterExpression to KeyConditionExpression
+                // PRESERVED: Conditional FilterExpression logic (only if filters exist)
+                FilterExpression: filterExpression.length > 0 ? filterExpression.join(' AND ') : undefined,
+                // PRESERVED: Conditional ExpressionAttributeNames logic exactly as original
+                ExpressionAttributeNames: Object.keys(expressionAttributeNames).length > 0 ? expressionAttributeNames : undefined,
+                // PRESERVED: Conditional ExpressionAttributeValues logic exactly as original
+                ExpressionAttributeValues: Object.keys(expressionAttributeValues).length > 0 ? expressionAttributeValues : undefined,
+                ExclusiveStartKey: lastEvaluatedKey // ADDED: For pagination
+            };
+
+            // CHANGE: Use QueryCommand instead of ScanCommand (key performance fix)
+            const queryResult = await ddbDocClient.send(new QueryCommand(queryParams));
+
+            if (queryResult.Items && queryResult.Items.length > 0) {
+                allItems = allItems.concat(queryResult.Items);
+
+                // ADDED: Safety check for total items
+                if (allItems.length > MAX_ITEMS) {
+                    console.warn(`⚠️ Hit max items limit (${MAX_ITEMS}) for distributor ${distributorId}. Truncating results.`);
+                    allItems = allItems.slice(0, MAX_ITEMS); // Truncate to limit
+                    break;
+                }
+            }
+
+            lastEvaluatedKey = queryResult.LastEvaluatedKey;
+
+        } while (lastEvaluatedKey); // Continue until no more pages
+
+        // ENHANCED: More detailed logging
+        console.log('App purchase orders fetched:', allItems.length);
+        if (filterExpression.length > 0) {
+            console.log('Filters applied:', filterExpression.join(' AND '));
+        }
+
+        // PRESERVED: Original response format exactly as-is (returns array directly, not wrapped in object)
+        return createResponse(200, allItems);
+
     } catch (error) {
+        // PRESERVED: Original error handling exactly as-is
         console.error('Error fetching app purchase orders:', error);
         return handleLambdaError(error, 'handleFetchAppPurchaseOrders');
     }
