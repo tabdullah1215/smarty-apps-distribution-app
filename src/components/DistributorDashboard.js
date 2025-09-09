@@ -36,10 +36,23 @@ function DistributorDashboard() {
     const setOrderFilterDebounced = useDebounce((value) => setOrderFilter(value), 500);
     const [dateFilter, setDateFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [sourceFilter, setSourceFilter] = useState('');
+
+    // NEW FILTERS - Add only these new filter variables
+    const [appIdFilter, setAppIdFilter] = useState('');
+    const [customerNameFilter, setCustomerNameFilter] = useState('');
+    const [productNameFilter, setProductNameFilter] = useState('');
+    const [appIdFilterImmediate, setAppIdFilterImmediate] = useState('');
+    const [customerNameFilterImmediate, setCustomerNameFilterImmediate] = useState('');
+    const [productNameFilterImmediate, setProductNameFilterImmediate] = useState('');
+
+    // NEW FILTER DEBOUNCING - Add debouncing for new filters
+    const [appIdFilterDebounced, setAppIdFilterDebounced] = useState('');
+    const [customerNameFilterDebounced, setCustomerNameFilterDebounced] = useState('');
+    const [productNameFilterDebounced, setProductNameFilterDebounced] = useState('');
+
     const itemsPerPage = 10;
     const [appUsersPage, setAppUsersPage] = useState(1);
-    // const [subAppFilter, setSubAppFilter] = useState('');
-    // const [subAppFilterImmediate, setSubAppFilterImmediate] = useState('');
     const [emailFilter, setEmailFilter] = useState('');
     const [emailFilterImmediate, setEmailFilterImmediate] = useState('');
     const [appUserOrderFilter, setAppUserOrderFilter] = useState('');
@@ -55,7 +68,6 @@ function DistributorDashboard() {
     const [appFilterImmediate, setAppFilterImmediate] = useState('');
     const setAppFilterDebounced = useDebounce((value) => setAppFilter(value), 500);
 
-    // const setSubAppFilterDebounced = useDebounce((value) => setSubAppFilter(value), 500);
     const setEmailFilterDebounced = useDebounce((value) => setEmailFilter(value), 500);
     const setAppUserOrderFilterDebounced = useDebounce((value) => setAppUserOrderFilter(value), 500);
 
@@ -66,10 +78,24 @@ function DistributorDashboard() {
 
     const bulkUploadRef = useRef(null);
 
-    // const [emailRegistrationLink, setEmailRegistrationLink] = useState('');
     const [copiedEmail, setCopiedEmail] = useState(false);
-    const [sourceFilter, setSourceFilter] = useState('');
     const [selectedEmailSource, setSelectedEmailSource] = useState('kajabi');
+
+    // NEW FILTER DEBOUNCING EFFECTS - Add these useEffect hooks for new filters
+    useEffect(() => {
+        const timer = setTimeout(() => setAppIdFilterDebounced(appIdFilter), 500);
+        return () => clearTimeout(timer);
+    }, [appIdFilter]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setCustomerNameFilterDebounced(customerNameFilter), 500);
+        return () => clearTimeout(timer);
+    }, [customerNameFilter]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setProductNameFilterDebounced(productNameFilter), 500);
+        return () => clearTimeout(timer);
+    }, [productNameFilter]);
 
     const {
         csvFile,
@@ -83,7 +109,11 @@ function DistributorDashboard() {
                 orderFilter,
                 dateFilter,
                 statusFilter,
-                sourceFilter
+                sourceFilter,
+                // ADD NEW FILTERS HERE
+                appIdFilter: appIdFilterDebounced,
+                customerNameFilter: customerNameFilterDebounced,
+                productNameFilter: productNameFilterDebounced
             });
         },
         bulkUploadRef
@@ -104,7 +134,11 @@ function DistributorDashboard() {
                     orderFilter,
                     dateFilter,
                     statusFilter,
-                    sourceFilter
+                    sourceFilter,
+                    // ADD NEW FILTERS HERE
+                    appIdFilter: appIdFilterDebounced,
+                    customerNameFilter: customerNameFilterDebounced,
+                    productNameFilter: productNameFilterDebounced
                 }, isFromSync)
             ]);
         }
@@ -127,6 +161,7 @@ function DistributorDashboard() {
         (message, updatedData) => {
             setPermanentMessage({ type: 'success', content: `${message} - User: ${updatedData.email}` });
             setSelectedAppUser(null);
+            setShowAppUserEditModal(false);
             fetchPendingAppUsers({
                 appFilter,
                 emailFilter,
@@ -155,9 +190,13 @@ function DistributorDashboard() {
             orderFilter,
             dateFilter,
             statusFilter,
-            sourceFilter
+            sourceFilter,
+            // ADD NEW FILTERS HERE
+            appIdFilter: appIdFilterDebounced,
+            customerNameFilter: customerNameFilterDebounced,
+            productNameFilter: productNameFilterDebounced
         });
-    }, [orderFilter, dateFilter, statusFilter, sourceFilter]);
+    }, [orderFilter, dateFilter, statusFilter, sourceFilter, appIdFilterDebounced, customerNameFilterDebounced, productNameFilterDebounced]);
 
     useEffect(() => {
         console.log('Filters changed:', {
@@ -232,7 +271,16 @@ function DistributorDashboard() {
                 content: 'Order number inserted successfully'
             });
             setOrderNumber('');
-            fetchPurchaseOrders();
+            fetchPurchaseOrders({
+                orderFilter,
+                dateFilter,
+                statusFilter,
+                sourceFilter,
+                // ADD NEW FILTERS HERE
+                appIdFilter: appIdFilterDebounced,
+                customerNameFilter: customerNameFilterDebounced,
+                productNameFilter: productNameFilterDebounced
+            });
         } catch (error) {
             setPermanentMessage({
                 type: 'error',
@@ -400,12 +448,20 @@ function DistributorDashboard() {
                         orderFilter,
                         dateFilter,
                         statusFilter,
-                        sourceFilter
+                        sourceFilter,
+                        // ADD NEW FILTERS HERE
+                        appIdFilter: appIdFilterDebounced,
+                        customerNameFilter: customerNameFilterDebounced,
+                        productNameFilter: productNameFilterDebounced
                     })}
                     orderFilterImmediate={orderFilterImmediate}
                     dateFilter={dateFilter}
                     statusFilter={statusFilter}
                     sourceFilter={sourceFilter}
+                    // ADD NEW FILTER PROPS HERE
+                    appIdFilter={appIdFilterImmediate}
+                    customerNameFilter={customerNameFilterImmediate}
+                    productNameFilter={productNameFilterImmediate}
                     onOrderFilterChange={(e) => {
                         setOrderFilterImmediate(e.target.value);
                         setOrderFilterDebounced(e.target.value);
@@ -413,9 +469,23 @@ function DistributorDashboard() {
                     onDateFilterChange={(e) => setDateFilter(e.target.value)}
                     onStatusFilterChange={(e) => setStatusFilter(e.target.value)}
                     onSourceFilterChange={(e) => setSourceFilter(e.target.value)}
+                    // ADD NEW FILTER HANDLERS HERE
+                    onAppIdFilterChange={(e) => {
+                        setAppIdFilterImmediate(e.target.value);
+                        setAppIdFilter(e.target.value);
+                    }}
+                    onCustomerNameFilterChange={(e) => {
+                        setCustomerNameFilterImmediate(e.target.value);
+                        setCustomerNameFilter(e.target.value);
+                    }}
+                    onProductNameFilterChange={(e) => {
+                        setProductNameFilterImmediate(e.target.value);
+                        setProductNameFilter(e.target.value);
+                    }}
                     currentPage={ordersPage}
                     itemsPerPage={itemsPerPage}
                     isLoading={isRefreshing}
+                    availableApps={apps}
                     Pagination={
                         <Pagination
                             currentPage={ordersPage}
@@ -428,8 +498,8 @@ function DistributorDashboard() {
 
                 <PendingAppUsersGrid
                     appUsers={Array.isArray(pendingAppUsers) ? pendingAppUsers : []}
-                    onAppUserClick={(appUser) => {
-                        setSelectedAppUser(appUser);
+                    onUserClick={(user) => {
+                        setSelectedAppUser(user);
                         setShowAppUserEditModal(true);
                     }}
                     onRefresh={() => fetchPendingAppUsers({
@@ -457,19 +527,16 @@ function DistributorDashboard() {
                         setAppUserOrderFilterDebounced(e.target.value);
                     }}
                     onStatusFilterChange={(e) => setAppUserStatusFilter(e.target.value)}
-                    onLinkTypeFilterChange={(e) => {
-                        console.log('Link type filter changed:', e.target.value);
-                        setAppUserLinkTypeFilter(e.target.value);
-                    }}
+                    onLinkTypeFilterChange={(e) => setAppUserLinkTypeFilter(e.target.value)}
+                    isLoading={isRefreshingAppUsers}
                     currentPage={appUsersPage}
                     itemsPerPage={itemsPerPage}
-                    isLoading={isRefreshingAppUsers}
                     availableApps={apps}
                     Pagination={
                         <Pagination
                             currentPage={appUsersPage}
                             setCurrentPage={setAppUsersPage}
-                            totalItems={(Array.isArray(pendingAppUsers) ? pendingAppUsers : []).length}
+                            totalItems={Array.isArray(pendingAppUsers) ? pendingAppUsers.length : 0}
                             itemsPerPage={itemsPerPage}
                         />
                     }

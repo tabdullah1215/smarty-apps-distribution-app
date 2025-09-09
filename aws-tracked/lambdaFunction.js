@@ -701,12 +701,6 @@ async function handleAppLogin(body) {
     }
 }
 
-// BUSINESS LOGIC PRESERVED - Fixed handleFetchAppPurchaseOrders function for aws-tracked/lambdaFunction.js
-// Replace the existing function with this corrected version
-// ONLY CHANGE: Switch from Scan to Query operation for optimal DynamoDB performance
-
-// COMPLETE handleFetchAppPurchaseOrders - Preserves ALL original logic + adds safety limits
-// Enhanced handleFetchAppPurchaseOrders - Supports new filters: appIdFilter, customerNameFilter, productNameFilter
 async function handleFetchAppPurchaseOrders(event) {
     try {
         // PRESERVED: Original authentication logic
@@ -746,7 +740,7 @@ async function handleFetchAppPurchaseOrders(event) {
 
         // PRESERVED: All original filter conditions exactly as-is
         if (orderFilter) {
-            filterExpression.push('contains(OrderNumber, :orderFilter)');
+            // filterExpression.push('contains(OrderNumber, :orderFilter)');
             expressionAttributeValues[':orderFilter'] = orderFilter;
         }
 
@@ -804,7 +798,9 @@ async function handleFetchAppPurchaseOrders(event) {
             // PRESERVED: Original query params building logic exactly as-is
             const queryParams = {
                 TableName: 'AppPurchaseOrders',
-                KeyConditionExpression: 'DistributorId = :distributorId', // MOVED: From FilterExpression to KeyConditionExpression
+                KeyConditionExpression: orderFilter
+                    ? 'DistributorId = :distributorId AND begins_with(OrderNumber, :orderFilter)'
+                    : 'DistributorId = :distributorId',
                 // PRESERVED: Conditional FilterExpression logic (only if filters exist)
                 FilterExpression: filterExpression.length > 0 ? filterExpression.join(' AND ') : undefined,
                 // PRESERVED: Conditional ExpressionAttributeNames logic exactly as original
