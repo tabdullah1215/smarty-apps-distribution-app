@@ -1090,6 +1090,9 @@ async function handleGetSubAppsForApp(event) {
 }
 
 async function handleVerifyAppPurchase(body) {
+//************************************************************************//
+//***************** UPDATE TWIN METHOD handleVerifyEmailAppPurchase WITH ADDITIONAL LOGIC ************//
+//************************************************************************//
     console.log('Processing app purchase verification');
     try {
         // PRESERVED: Original validation - NO CHANGES
@@ -1127,6 +1130,28 @@ async function handleVerifyAppPurchase(body) {
             return createResponse(400, {
                 code: 'INVALID_TOKEN_STATUS',
                 message: 'Registration link is invalid or has already been used'
+            });
+        }
+
+        // Add after token validation, before user creation:
+        if (body.appId !== tokenResult.Item.AppId) {
+            return createResponse(400, {
+                code: 'INVALID_APP_ID',
+                message: 'Invalid Registration Link'
+            });
+        }
+
+        if (body.subappId && body.subappId !== tokenResult.Item.SubAppId) {
+            return createResponse(400, {
+                code: 'INVALID_SUBAPP_ID',
+                message: 'Invalid Registration Link'
+            });
+        }
+
+        if (body.linkType !== tokenResult.Item.LinkType) {
+            return createResponse(400, {
+                code: 'INVALID_LINK_TYPE',
+                message: 'Invalid Registration Link'
             });
         }
 
@@ -1294,6 +1319,28 @@ async function handleVerifyEmailAppPurchase(body) {
             return createResponse(400, {
                 code: 'INVALID_TOKEN',
                 message: 'Invalid purchase token'
+            });
+        }
+
+        // Add after token validation, before user creation:
+        if (body.appId !== tokenResult.Item.AppId) {
+            return createResponse(400, {
+                code: 'INVALID_APP_ID',
+                message: 'Invalid Registration Link'
+            });
+        }
+
+        if (body.subappId && body.subappId !== tokenResult.Item.SubAppId) {
+            return createResponse(400, {
+                code: 'INVALID_SUBAPP_ID',
+                message: 'Invalid Registration Link'
+            });
+        }
+
+        if (body.linkType !== tokenResult.Item.LinkType) {
+            return createResponse(400, {
+                code: 'INVALID_LINK_TYPE',
+                message: 'Invalid Registration Link'
             });
         }
 
