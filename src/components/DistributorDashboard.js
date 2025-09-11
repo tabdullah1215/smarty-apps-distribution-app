@@ -20,6 +20,7 @@ import BulkAppPurchaseOrders from './BulkAppPurchaseOrders';
 import {useAppOrdersUpload} from "../hooks/useAppOrdersUpload";
 import SubAppSelector from "./SubAppSelector";
 import AppUserTestRegistration from './AppUserTestRegistration';
+import { Copy } from 'lucide-react';
 
 function DistributorDashboard() {
     const userInfo = authService.getUserInfo();
@@ -80,6 +81,8 @@ function DistributorDashboard() {
 
     const [copiedEmail, setCopiedEmail] = useState(false);
     const [selectedEmailSource, setSelectedEmailSource] = useState('kajabi');
+
+    const [copiedDistributorId, setCopiedDistributorId] = useState(false);
 
     // NEW FILTER DEBOUNCING EFFECTS - Add these useEffect hooks for new filters
     useEffect(() => {
@@ -215,6 +218,35 @@ function DistributorDashboard() {
         });
     }, [appFilter, emailFilter, appUserOrderFilter, appUserStatusFilter, appUserLinkTypeFilter]);
 
+    const copyDistributorIdToClipboard = () => {
+        const textToCopy = distributorId;
+
+        // Create a temporary textarea
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                setCopiedDistributorId(true);
+                setTimeout(() => setCopiedDistributorId(false), 2000);
+            } else {
+                // Fallback to showing the ID in an alert
+                alert(`Distributor ID: ${textToCopy}`);
+            }
+        } catch (err) {
+            // If even execCommand fails, show the ID
+            alert(`Copy this Distributor ID: ${textToCopy}`);
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    };
+
     const fetchAvailableApps = async () => {
         try {
             setIsLoading(true);
@@ -296,9 +328,28 @@ function DistributorDashboard() {
             <DashboardHeader
                 title="Distributor Dashboard"
                 centerContent={
-                    <p className="text-gray-600">
-                        Welcome, {userInfo?.email || 'User'}!
-                    </p>
+                    <div className="text-center">
+                        <p className="text-gray-600">
+                            Welcome, {userInfo?.email || 'User'}!
+                        </p>
+                        <div className="flex items-center justify-center gap-2 mt-1">
+                            <span className="text-sm text-gray-500">
+                                ID: {distributorId || 'N/A'}
+                            </span>
+                            {distributorId && (
+                                <button
+                                    onClick={copyDistributorIdToClipboard}
+                                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                                    title="Copy Distributor ID"
+                                >
+                                    <Copy size={14} />
+                                </button>
+                            )}
+                            {copiedDistributorId && (
+                                <span className="text-xs text-green-600 font-medium">Copied!</span>
+                            )}
+                        </div>
+                    </div>
                 }
                 permanentMessage={permanentMessage}
             />
