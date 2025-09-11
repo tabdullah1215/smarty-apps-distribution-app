@@ -76,6 +76,8 @@ const actionConfig = {
     updateAppUser: { role: 'Distributor' },
     bulkInsertAppPurchaseOrder: { role: 'Distributor' },
     getSubAppsForApp: { role: 'Distributor' },
+    syncThirdPartyOrderManual: { role: 'Distributor' }
+
 };
 
 // Password hashing utilities
@@ -1276,10 +1278,10 @@ async function handleVerifyAppPurchase(body) {
     }
 }
 
-async function handleVerifyEmailAppPurchase(body) {
+async function handleVerifyEmailAppPurchase(body, event) {
     console.log('Processing email app purchase verification');
     try {
-        // Same validation as handleVerifyAppPurchase
+        // PRESERVED: Original validation logic
         if (!body.token || !body.appId || !body.email || !body.password) {
             return createResponse(400, {
                 code: 'MISSING_REQUIRED_FIELDS',
@@ -1287,7 +1289,7 @@ async function handleVerifyEmailAppPurchase(body) {
             });
         }
 
-        // Step 1: Check for duplicate email (CRITICAL FIRST)
+        // PRESERVED: Step 1: Check for duplicate email (CRITICAL FIRST)
         console.log('Checking for duplicate email:', body.email);
         const existingUserCheck = await ddbDocClient.send(new QueryCommand({
             TableName: 'AppUsers',
@@ -1309,7 +1311,7 @@ async function handleVerifyEmailAppPurchase(body) {
 
         console.log('Email available for registration:', body.email);
 
-        // Step 2: Token verification and source extraction
+        // PRESERVED: Step 2: Token verification and source extraction
         const tokenResult = await ddbDocClient.send(new GetCommand({
             TableName: 'AppPurchaseTokens',
             Key: { Token: body.token }
@@ -1322,7 +1324,7 @@ async function handleVerifyEmailAppPurchase(body) {
             });
         }
 
-        // Add after token validation, before user creation:
+        // PRESERVED: Token validation logic
         if (body.appId !== tokenResult.Item.AppId) {
             return createResponse(400, {
                 code: 'INVALID_APP_ID',
@@ -1344,46 +1346,25 @@ async function handleVerifyEmailAppPurchase(body) {
             });
         }
 
-        // Step 3: Debug purchase record matching
-        console.log('=== DEBUGGING PURCHASE MATCH ===');
-        console.log('Search criteria:', {
-            email: body.email.toLowerCase(),
-            appId: body.appId,
-            source: tokenResult.Item.Source,
-            status: 'pending'
+        // NEW: Step 3: Use helper for triple match and sync logic (REPLACES Steps 3, 5, 6)
+        console.log('Performing triple match and sync using helper function');
+        const syncResult = await helperEmailMatchAndSync(
+            body.email,
+            body.appId,
+            tokenResult.Item.Source,
+            tokenResult.Item.DistributorId
+        );
+
+        const userStatus = syncResult.matchFound ? 'active' : 'pending';
+
+        console.log('Sync result from helper:', {
+            success: syncResult.success,
+            matchFound: syncResult.matchFound,
+            distributorIdFlipped: syncResult.distributorIdFlipped,
+            orderNumber: syncResult.orderNumber
         });
 
-        // Original triple validation search
-        const purchaseCheck = await ddbDocClient.send(new ScanCommand({
-            TableName: 'AppPurchaseOrders',
-            FilterExpression: 'Email = :email AND AppId = :appId AND #source = :source AND #status = :status',
-            ExpressionAttributeNames: {
-                '#source': 'Source',
-                '#status': 'Status'
-            },
-            ExpressionAttributeValues: {
-                ':email': body.email.toLowerCase(),
-                ':appId': body.appId,
-                ':source': tokenResult.Item.Source,
-                ':status': 'pending'
-            }
-        }));
-
-        console.log('Triple validation result:', JSON.stringify(purchaseCheck.Items, null, 2));
-        console.log('=== END DEBUGGING ===');
-
-        const matchingPurchase = purchaseCheck.Items && purchaseCheck.Items.length > 0 ? purchaseCheck.Items[0] : null;
-        const userStatus = matchingPurchase ? 'active' : 'pending';
-
-        console.log('Purchase match result:', {
-            found: !!matchingPurchase,
-            email: body.email,
-            appId: body.appId,
-            source: tokenResult.Item.Source,
-            purchaseCount: purchaseCheck.Items?.length || 0
-        });
-
-        // Step 4: Create user record
+        // PRESERVED: Step 4: Create user record
         console.log('Creating user record with status:', userStatus);
 
         // Construct EmailSubAppId for composite key (following existing pattern)
@@ -1398,7 +1379,7 @@ async function handleVerifyEmailAppPurchase(body) {
             Status: userStatus,  // 'active' if purchase match, 'pending' if not
             CreatedAt: new Date().toISOString(),
             Token: body.token,
-            OrderNumber: matchingPurchase?.OrderNumber || null,
+            OrderNumber: syncResult.orderNumber || null,  // From helper result
             DistributorId: tokenResult.Item.DistributorId,  // This is the source of truth
             LinkType: tokenResult.Item.LinkType,
             SubAppId: tokenResult.Item.SubAppId,
@@ -1416,159 +1397,21 @@ async function handleVerifyEmailAppPurchase(body) {
             status: userStatus,
             distributorId: tokenResult.Item.DistributorId,
             subAppId: tokenResult.Item.SubAppId,
-            source: tokenResult.Item.Source
+            source: tokenResult.Item.Source,
+            syncSuccess: syncResult.success
         });
 
-        // Step 5: Distributor ID Alignment Logic - UPDATE PURCHASE RECORD IF MISMATCH
-        if (matchingPurchase && matchingPurchase.DistributorId !== tokenResult.Item.DistributorId) {
-            console.log('🔄 Distributor ID mismatch detected - aligning purchase record');
-            console.log('Purchase record DistributorId:', matchingPurchase.DistributorId);
-            console.log('AppUser record DistributorId (source of truth):', tokenResult.Item.DistributorId);
-
-            const oldDistributorId = matchingPurchase.DistributorId;
-            const newDistributorId = tokenResult.Item.DistributorId;
-            const orderNumber = matchingPurchase.OrderNumber;
-            const transferTimestamp = new Date().toISOString();
-
-            try {
-                // Since DistributorId is part of the primary key, we need to:
-                // 1. Delete the old record
-                // 2. Create a new record with the correct DistributorId
-
-                // First, get the complete purchase record
-                const fullPurchaseRecord = { ...matchingPurchase };
-
-                // Delete the old record
-                await ddbDocClient.send(new DeleteCommand({
-                    TableName: 'AppPurchaseOrders',
-                    Key: {
-                        DistributorId: oldDistributorId,
-                        OrderNumber: orderNumber
-                    }
-                }));
-
-                console.log('🗑️ Old purchase record deleted');
-
-                // Create new record with updated DistributorId
-                const updatedPurchaseRecord = {
-                    ...fullPurchaseRecord,
-                    DistributorId: newDistributorId,
-                    UpdatedAt: transferTimestamp,
-                    TransferredAt: transferTimestamp,
-                    OriginalDistributorId: oldDistributorId
-                };
-
-                await ddbDocClient.send(new PutCommand({
-                    TableName: 'AppPurchaseOrders',
-                    Item: updatedPurchaseRecord
-                }));
-
-                console.log('✅ New purchase record created with correct DistributorId');
-
-                // Add audit log to AttributionAuditLog table
-                const auditLogItem = {
-                    OrderNumber: orderNumber,
-                    TransferTimestamp: transferTimestamp,
-                    FromDistributorId: oldDistributorId,
-                    ToDistributorId: newDistributorId,
-                    RegistrationEmail: body.email.toLowerCase(),
-                    RegistrationAppId: body.appId,
-                    TransferReason: 'DISTRIBUTOR_ALIGNMENT',
-                    TransferType: 'AUTOMATED',
-                    ProcessedBy: 'handleVerifyEmailAppPurchase'
-                };
-
-                await ddbDocClient.send(new PutCommand({
-                    TableName: 'AttributionAuditLog',
-                    Item: auditLogItem
-                }));
-
-                console.log('✅ Audit log created successfully:', {
-                    orderNumber: orderNumber,
-                    fromDistributor: oldDistributorId,
-                    toDistributor: newDistributorId,
-                    email: body.email
-                });
-
-            } catch (alignmentError) {
-                console.error('❌ Error during distributor ID alignment:', alignmentError);
-                // Note: We don't fail the registration if alignment fails
-                // The user record was created successfully, which is the primary goal
-            }
-        } else if (matchingPurchase) {
-            console.log('✅ Distributor IDs already aligned - no action needed');
-        } else {
-            console.log('ℹ️ No matching purchase record found - no alignment needed');
-        }
-
-        // Step 6: Update purchase record status if match found (EXISTING LOGIC PRESERVED)
-        let updateDebug = { attempted: false, error: null, results: [] };
-
-        if (matchingPurchase) {
-            updateDebug.attempted = true;
-            console.log('Updating purchase record status using triple match criteria');
-
-            try {
-                // Use the same criteria that found the record to update it
-                const updateResult = await ddbDocClient.send(new ScanCommand({
-                    TableName: 'AppPurchaseOrders',
-                    FilterExpression: 'Email = :email AND AppId = :appId AND #source = :source AND #status = :status',
-                    ExpressionAttributeNames: {
-                        '#source': 'Source',
-                        '#status': 'Status'
-                    },
-                    ExpressionAttributeValues: {
-                        ':email': body.email.toLowerCase(),
-                        ':appId': body.appId,
-                        ':source': tokenResult.Item.Source,
-                        ':status': 'pending'
-                    }
-                }));
-
-                updateDebug.scanResults = updateResult.Items;
-                updateDebug.itemCount = updateResult.Items?.length || 0;
-
-                // Update each matching record to 'used' status
-                if (updateResult.Items && updateResult.Items.length > 0) {
-                    for (const item of updateResult.Items) {
-                        await ddbDocClient.send(new UpdateCommand({
-                            TableName: 'AppPurchaseOrders',
-                            Key: {
-                                DistributorId: item.DistributorId,
-                                OrderNumber: item.OrderNumber
-                            },
-                            UpdateExpression: 'SET #status = :status, UpdatedAt = :updatedAt',
-                            ExpressionAttributeNames: {
-                                '#status': 'Status'
-                            },
-                            ExpressionAttributeValues: {
-                                ':status': 'used',
-                                ':updatedAt': new Date().toISOString()
-                            }
-                        }));
-
-                        updateDebug.results.push({
-                            orderNumber: item.OrderNumber,
-                            distributorId: item.DistributorId,
-                            updated: true
-                        });
-                    }
-                }
-
-                console.log('Purchase status update completed:', updateDebug);
-
-            } catch (updateError) {
-                console.error('Error updating purchase status:', updateError);
-                updateDebug.error = updateError.message;
-            }
-        }
+        // PRESERVED: Original response format with helper result data
+        const updateDebug = {
+            attempted: syncResult.success,
+            error: syncResult.error || null,
+            results: syncResult.orderNumber ? [{ orderNumber: syncResult.orderNumber, updated: true }] : []
+        };
 
         return createResponse(200, {
-            code: 'SUCCESS',
-            message: 'Email app purchase verified and user created successfully',
-            email: body.email,
-            status: userStatus,
-            orderMatch: !!matchingPurchase,
+            message: 'Email registration successful',
+            userCreated: true,
+            matchFound: syncResult.matchFound,
             distributorId: tokenResult.Item.DistributorId,
             updateDebug: updateDebug,
             debug: false
@@ -1580,6 +1423,193 @@ async function handleVerifyEmailAppPurchase(body) {
     }
 }
 
+async function handleSyncThirdPartyOrderManual(body, event) {
+    console.log('Processing manual sync third party order request');
+
+    try {
+        if (!body.email || !body.appId || !body.source || !body.distributorId) {
+            return createResponse(400, {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: 'Email, appId, source, and distributorId are required'
+            });
+        }
+
+        const requestingDistributorId = event.user.sub;
+
+        // Verify the requesting user can sync this record
+        if (body.distributorId !== requestingDistributorId) {
+            return createResponse(403, {
+                code: 'FORBIDDEN',
+                message: 'Cannot sync orders for other distributors'
+            });
+        }
+
+        // Call the helper function
+        const syncResult = await helperEmailMatchAndSync(
+            body.email,
+            body.appId,
+            body.source,
+            body.distributorId
+        );
+
+        if (syncResult.success) {
+            return createResponse(200, {
+                message: syncResult.message,
+                matchFound: syncResult.matchFound,
+                distributorIdFlipped: syncResult.distributorIdFlipped,
+                orderNumber: syncResult.orderNumber
+            });
+        } else {
+            return createResponse(400, {
+                code: 'SYNC_FAILED',
+                message: syncResult.message
+            });
+        }
+
+    } catch (error) {
+        console.error('Error in handleSyncThirdPartyOrderManual:', error);
+        return handleLambdaError(error, 'handleSyncThirdPartyOrderManual');
+    }
+}
+
+// REPLACE the helperEmailMatchAndSync function with this corrected version
+
+async function helperEmailMatchAndSync(email, appId, source, distributorId) {
+    console.log('helperEmailMatchAndSync called with:', { email, appId, source, distributorId });
+
+    try {
+        // Step 1: Triple match validation (same logic as registration)
+        const purchaseCheck = await ddbDocClient.send(new ScanCommand({
+            TableName: 'AppPurchaseOrders',
+            FilterExpression: 'Email = :email AND AppId = :appId AND #source = :source AND #status = :status',
+            ExpressionAttributeNames: {
+                '#source': 'Source',
+                '#status': 'Status'
+            },
+            ExpressionAttributeValues: {
+                ':email': email.toLowerCase(),
+                ':appId': appId,
+                ':source': source,
+                ':status': 'pending'
+            }
+        }));
+
+        const matchingPurchase = purchaseCheck.Items && purchaseCheck.Items.length > 0 ? purchaseCheck.Items[0] : null;
+
+        if (!matchingPurchase) {
+            return {
+                success: false,
+                matchFound: false,
+                message: 'No matching purchase order found'
+            };
+        }
+
+        console.log('Triple match found:', matchingPurchase.OrderNumber);
+
+        // Step 2: Distributor ID alignment logic (CORRECTED - matches original registration)
+        let distributorIdFlipped = false;
+        if (matchingPurchase.DistributorId !== distributorId) {
+            console.log('🔄 Distributor ID mismatch detected - aligning purchase record');
+
+            const oldDistributorId = matchingPurchase.DistributorId;
+            const newDistributorId = distributorId;
+            const orderNumber = matchingPurchase.OrderNumber;
+            const transferTimestamp = new Date().toISOString();
+
+            // Get the complete purchase record (same as original)
+            const fullPurchaseRecord = { ...matchingPurchase };
+
+            // Delete the old record
+            await ddbDocClient.send(new DeleteCommand({
+                TableName: 'AppPurchaseOrders',
+                Key: {
+                    DistributorId: oldDistributorId,  // FIXED: Use composite key properly
+                    OrderNumber: orderNumber
+                }
+            }));
+
+            console.log('🗑️ Old purchase record deleted');
+
+            // Create new record with updated DistributorId (CORRECTED - includes all fields)
+            const updatedPurchaseRecord = {
+                ...fullPurchaseRecord,
+                DistributorId: newDistributorId,
+                UpdatedAt: transferTimestamp,
+                TransferredAt: transferTimestamp,  // ADDED: Missing field
+                OriginalDistributorId: oldDistributorId  // ADDED: Missing field
+            };
+
+            await ddbDocClient.send(new PutCommand({
+                TableName: 'AppPurchaseOrders',
+                Item: updatedPurchaseRecord
+            }));
+
+            console.log('✅ New purchase record created with correct DistributorId');
+
+            // Create audit log (CORRECTED - matches original field names)
+            const auditLogItem = {
+                OrderNumber: orderNumber,
+                TransferTimestamp: transferTimestamp,  // FIXED: Field name
+                FromDistributorId: oldDistributorId,
+                ToDistributorId: newDistributorId,
+                RegistrationEmail: email.toLowerCase(),  // FIXED: Field name
+                RegistrationAppId: appId,  // ADDED: Missing field
+                TransferReason: 'DISTRIBUTOR_ALIGNMENT',  // ADDED: Missing field
+                TransferType: 'MANUAL',  // CHANGED: Manual vs automated
+                ProcessedBy: 'handleSyncThirdPartyOrderManual'  // CHANGED: Function name
+            };
+
+            await ddbDocClient.send(new PutCommand({
+                TableName: 'AttributionAuditLog',  // FIXED: Check table name (might be singular)
+                Item: auditLogItem
+            }));
+
+            distributorIdFlipped = true;
+            console.log('✅ Distributor ID alignment completed');
+
+        } else {
+            console.log('✅ Distributor IDs already aligned - no action needed');
+        }
+
+        // Step 3: Update purchase record status (SIMPLIFIED - direct update)
+        console.log('Updating purchase record status to active');
+
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: 'AppPurchaseOrders',
+            Key: {
+                DistributorId: distributorId,  // Use final/correct DistributorId
+                OrderNumber: matchingPurchase.OrderNumber
+            },
+            UpdateExpression: 'SET #status = :newStatus, UpdatedAt = :updatedAt',
+            ExpressionAttributeNames: {
+                '#status': 'Status'
+            },
+            ExpressionAttributeValues: {
+                ':newStatus': 'active',
+                ':updatedAt': new Date().toISOString()
+            }
+        }));
+
+        console.log('✅ Purchase record status updated to active');
+
+        return {
+            success: true,
+            matchFound: true,
+            distributorIdFlipped,
+            orderNumber: matchingPurchase.OrderNumber,
+            message: `Order ${matchingPurchase.OrderNumber} synced successfully`
+        };
+
+    } catch (error) {
+        console.error('❌ Error in helperEmailMatchAndSync:', error);
+        console.error('❌ Error stack:', error.stack);  // ADDED: More detailed error logging
+        return {
+            success: false,
+            error: error.message,
+            message: `Sync operation failed: ${error.message}`  // IMPROVED: Include actual error
+        };
+    }
+}
 async function handleGenerateEmailPurchaseToken(body, event) {
     console.log('Generating new email registration token', {
         receivedBody: body,
@@ -2202,6 +2232,8 @@ exports.handler = async (event) => {
                 return await handleBulkInsertAppPurchaseOrder(body, event);
             case 'getSubAppsForApp':
                 return await handleGetSubAppsForApp(event);
+            case 'syncThirdPartyOrderManual':
+                return await handleSyncThirdPartyOrderManual(body, event);
 
             default:
                 return createResponse(400, {

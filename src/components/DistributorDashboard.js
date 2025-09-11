@@ -100,6 +100,57 @@ function DistributorDashboard() {
         return () => clearTimeout(timer);
     }, [productNameFilter]);
 
+    const handleSyncThirdPartyOrder = async (appUser) => {
+        try {
+            console.log('Syncing third party order for:', appUser.Email);
+
+            const token = authService.getToken();
+            const API_KEY = process.env.REACT_APP_API_KEY;
+
+            const response = await axios.post(
+                `${API_ENDPOINT}/app-manager`,
+                {
+                    email: appUser.Email,
+                    appId: appUser.AppId,
+                    source: appUser.Source,
+                    distributorId: appUser.DistributorId
+                },
+                {
+                    params: { action: 'syncThirdPartyOrderManual' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Api-Key': API_KEY
+                    }
+                }
+            );
+
+            if (response.data && response.data.message) {
+                setPermanentMessage({
+                    type: 'success',
+                    content: `${response.data.message} - User: ${appUser.Email}`
+                });
+
+                // Refresh the data
+                fetchPendingAppUsers({
+                    appFilter,
+                    emailFilter,
+                    orderFilter: appUserOrderFilter,
+                    statusFilter: appUserStatusFilter,
+                    linkTypeFilter: appUserLinkTypeFilter
+                });
+            }
+
+        } catch (error) {
+            console.error('Error syncing third party order:', error);
+            const errorMessage = error.response?.data?.message || 'Sync failed. Please try again.';
+            setPermanentMessage({
+                type: 'error',
+                content: `Sync failed: ${errorMessage}`
+            });
+        }
+    };
+
     const {
         csvFile,
         isUploading,
@@ -564,6 +615,7 @@ function DistributorDashboard() {
                         statusFilter: appUserStatusFilter,
                         linkTypeFilter: appUserLinkTypeFilter
                     })}
+                    onSyncThirdPartyOrder={handleSyncThirdPartyOrder}
                     appFilterImmediate={appFilterImmediate}
                     emailFilterImmediate={emailFilterImmediate}
                     orderFilterImmediate={appUserOrderFilterImmediate}

@@ -64,7 +64,7 @@ const PendingAppUsersGrid = ({
                                  Pagination,
                                  isLoading,
                                  availableApps, // PRESERVED: for backward compatibility
-                                    allAppUsers
+                                 onSyncThirdPartyOrder
                              }) => {
 
     // 3. UPDATE available apps logic (extract unique AppIds instead of SubAppIds):
@@ -200,11 +200,13 @@ const PendingAppUsersGrid = ({
                 <table className="w-full border-collapse border">
                     <thead>
                     <tr className="bg-gray-200">
-                        <th className="border p-2">App Name</th> {/* CHANGED: from App Name */}
+                        <th className="border p-2">App Name</th>
+                        {/* CHANGED: from App Name */}
                         <th className="border p-2">Email</th>
                         <th className="border p-2">Order #</th>
                         <th className="border p-2">Status</th>
                         <th className="border p-2">Link Type</th>
+                        <th className="border p-2">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -245,6 +247,20 @@ const PendingAppUsersGrid = ({
                                     </span>
                                 </td>
                                 <td className="border p-2">{user.LinkType}</td>
+                                <td className="border p-2">
+                                    {/* NEW: Sync button - only show for email + pending */}
+                                    {user.LinkType === 'email' && user.Status === 'pending' ? (
+                                        <button
+                                            onClick={() => onSyncThirdPartyOrder(user)}
+                                            className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                                            title="Sync 3rd party order"
+                                        >
+                                            Sync 3rd Party Order
+                                        </button>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs">-</span>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -256,7 +272,7 @@ const PendingAppUsersGrid = ({
                         No app users found
                         {statusFilter && ` with status: ${statusFilter}`}
                         {linkTypeFilter && ` and link type: ${linkTypeFilter}`}
-                        {appFilterImmediate  && ` for SubApp: ${formatSubAppName(appFilterImmediate)}`}
+                        {appFilterImmediate && ` for SubApp: ${formatSubAppName(appFilterImmediate)}`}
                         {emailFilterImmediate && ` matching email: ${emailFilterImmediate}`}
                         {orderFilterImmediate && ` with order: ${orderFilterImmediate}`}
                     </div>
