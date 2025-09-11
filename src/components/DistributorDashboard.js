@@ -346,8 +346,10 @@ function DistributorDashboard() {
                             generateFn={() => generatePurchaseLink('unique', selectedApp, selectedSubAppId)}
                             copyFn={() => copyToClipboard(uniquePurchaseLink, setCopiedUnique)}
                             isGenerating={generatingStates.unique}
+                            disabled={!selectedSubAppId}
                             description="For confirmed payments"
                         />
+
                         <LinkGenerator
                             title="Generic Purchase Link"
                             link={genericPurchaseLink}
@@ -355,45 +357,47 @@ function DistributorDashboard() {
                             generateFn={() => generatePurchaseLink('generic', selectedApp, selectedSubAppId)}
                             copyFn={() => copyToClipboard(genericPurchaseLink, setCopiedGeneric)}
                             isGenerating={generatingStates.generic}
+                            disabled={!selectedSubAppId}
                             description="Requires order number verification"
                         />
-                        {selectedApp && selectedSubAppId && (
-                            <>
-                                {/* NEW: Email Registration Link Generator with Source Selection */}
-                                <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-                                    <h2 className="text-xl font-semibold mb-4">Email Registration Link</h2>
-                                    <p className="text-sm text-gray-600 mb-4">For store-based purchases (Kajabi, Whop, Stan, etc.)</p>
 
-                                    {/* Source Selection Dropdown */}
-                                    <div className="mb-4">
-                                        <label htmlFor="emailSourceSelect" className="block text-sm font-medium text-gray-700 mb-2">
-                                            Select Store Source
-                                        </label>
-                                        <select
-                                            id="emailSourceSelect"
-                                            value={selectedEmailSource}
-                                            onChange={(e) => setSelectedEmailSource(e.target.value)}
-                                            className="w-full p-2 border rounded-md"
-                                        >
-                                            <option value="kajabi">Kajabi</option>
-                                            <option value="whop">Whop</option>
-                                            <option value="stan">Stan</option>
-                                        </select>
-                                    </div>
+                        {/* Email Registration Link - Now visible when app is selected, disabled until subapp is selected */}
+                        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+                            <h2 className="text-xl font-semibold mb-4">Email Registration Link</h2>
+                            <p className="text-sm text-gray-600 mb-4">For store-based purchases (Kajabi, Whop, Stan, etc.)</p>
 
-                                    <LinkGenerator
-                                        title={`Email Registration Link (${selectedEmailSource})`}
-                                        link={emailRegistrationLink}
-                                        copied={copiedEmail}
-                                        generateFn={() => generatePurchaseLink('email', selectedApp, selectedSubAppId, selectedEmailSource)}
-                                        copyFn={() => copyToClipboard(emailRegistrationLink, setCopiedEmail)}
-                                        isGenerating={generatingStates.email}
-                                        description={`Registration link for ${selectedEmailSource} store purchases`}
-                                    />
-                                </div>
-                            </>
-                        )}
+                            {/* Source Selection Dropdown */}
+                            <div className="mb-4">
+                                <label htmlFor="emailSourceSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Select Store Source
+                                </label>
+                                <select
+                                    id="emailSourceSelect"
+                                    value={selectedEmailSource}
+                                    onChange={(e) => setSelectedEmailSource(e.target.value)}
+                                    className="w-full p-2 border rounded-md"
+                                    disabled={!selectedSubAppId}
+                                >
+                                    <option value="kajabi">Kajabi</option>
+                                    <option value="whop">Whop</option>
+                                    <option value="stan">Stan</option>
+                                </select>
+                                {!selectedSubAppId && (
+                                    <p className="mt-1 text-sm text-gray-500">Select a SubApp to enable store source selection</p>
+                                )}
+                            </div>
 
+                            <LinkGenerator
+                                title={`Email Registration Link (${selectedEmailSource})`}
+                                link={emailRegistrationLink}
+                                copied={copiedEmail}
+                                generateFn={() => generatePurchaseLink('email', selectedApp, selectedSubAppId, selectedEmailSource)}
+                                copyFn={() => copyToClipboard(emailRegistrationLink, setCopiedEmail)}
+                                isGenerating={generatingStates.email}
+                                disabled={!selectedSubAppId}
+                                description={`Registration link for ${selectedEmailSource} store purchases`}
+                            />
+                        </div>
                     </>
                 )}
 
@@ -498,7 +502,7 @@ function DistributorDashboard() {
 
                 <PendingAppUsersGrid
                     appUsers={Array.isArray(pendingAppUsers) ? pendingAppUsers : []}
-                    onUserClick={(user) => {
+                    onAppUserClick={(user) => {
                         setSelectedAppUser(user);
                         setShowAppUserEditModal(true);
                     }}

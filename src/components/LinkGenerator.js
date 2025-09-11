@@ -1,18 +1,35 @@
-// components/LinkGenerator.js
+// components/LinkGenerator.js - Updated with disabled state support
 import React from 'react';
 import { Copy, Loader2 } from 'lucide-react';
 
-const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating = false }) => (
-
+const LinkGenerator = ({
+                           title,
+                           link,
+                           copied,
+                           generateFn,
+                           copyFn,
+                           isGenerating = false,
+                           disabled = false,
+                           description
+                       }) => (
     <div className="mt-8 bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
+        {description && (
+            <p className="text-sm text-gray-600 mb-4">{description}</p>
+        )}
         <button
             onClick={generateFn}
-            disabled={isGenerating}
-            className="w-full py-4 px-6 text-xl font-semibold bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600 transition duration-300 disabled:bg-blue-300 flex items-center justify-center gap-2"
+            disabled={isGenerating || disabled}
+            className={`w-full py-4 px-6 text-xl font-semibold rounded-lg shadow-lg transition duration-300 flex items-center justify-center gap-2 ${
+                disabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600 disabled:bg-blue-300'
+            }`}
         >
             {isGenerating && <Loader2 size={24} className="animate-spin" />}
-            {isGenerating ? `Generating ${title}...` : `Generate ${title}`}
+            {isGenerating ? `Generating ${title}...` :
+                disabled ? `Select SubApp to Generate ${title}` :
+                    `Generate ${title}`}
         </button>
         <div className="mt-4 p-6 bg-gray-100 rounded-lg shadow-md">
             <p className="text-lg font-semibold mb-4">
@@ -36,7 +53,9 @@ const LinkGenerator = ({ title, link, copied, generateFn, copyFn, isGenerating =
                 </div>
             ) : (
                 <div className="p-4 bg-white rounded-lg border-2 border-gray-300">
-                    <p className="text-base text-gray-500 italic">No link generated yet.</p>
+                    <p className="text-base text-gray-500 italic">
+                        {disabled ? "Select a SubApp first to generate link." : "No link generated yet."}
+                    </p>
                 </div>
             )}
             {copied && (
